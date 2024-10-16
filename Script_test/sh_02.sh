@@ -47,6 +47,4 @@ if [ -z "$input_file" ]; then
     exit 1  
 fi  
 #调用函数处理文件，并传递给他一个参数
-read_and_printf_file "$input_file"
-
-
+read_and_printf_file "$input_fi

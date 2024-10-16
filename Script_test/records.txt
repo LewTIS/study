@@ -1,0 +1,7 @@
+2020-01-01 00:01:01 1000 Batches: user frank insert 2010 records databases:product table:detail, insert 1000 records successfully,failed 1010 records
+2020-01-01 00:01:02 1001 Batches: user lion insert 1030 records databases:product table:detail, insert 989 records successfully,failed 41 records
+2020-01-01 00:01:03 1002 Batches: user mike insert 1290 records databases:product table:detail, insert 235 records successfully,failed 1055 records
+2020-01-01 00:01:04 1003 Batches: user alan insert 3452 records databases:product table:detail, insert 1257 records successfully,failed 2195 records
+2020-01-01 00:01:05 1004 Batches: user ben insert 4353 records databases:product table:detail, insert 2245 records successfully,failed 2108 records
+2020-01-01 00:01:06 1005 Batches: user bily insert 5633 records databases:product table:detail, insert 3456 records successfully,failed 2177 records
+2020-01-01 00:01:07 1006 Batches: user frank insert 2010 records databases:product table:detail, insert 1000 records successfully,failed 1010 records

@@ -3,7 +3,7 @@
 # 定义一个函数来处理文件内容的读取和输出  
 function read_and_print_file {  
     local input_file=$1  
-    if [ ! -f "$input_file" ]; then  
+    if [ ! -e "$input_file" ]; then  
         echo "Error: File '$input_file' does not exist."  
         exit 1  
     fi  

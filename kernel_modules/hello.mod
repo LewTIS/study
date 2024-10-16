@@ -1,1 +1,1 @@
-/home/linux/kernel_modules/hello.o
+/home/linux/share/CODE/kernel_modules/hello.o

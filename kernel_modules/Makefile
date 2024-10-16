@@ -1,8 +1,10 @@
 obj-m += hello.o
 
+all:
+	make -C /lib/modules/$(shell uname -r)/build M=`pwd` modules
+clean:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 
-
-# make -C /lib/modules/$(uname -r)/build M=`pwd` modules
 
 #-C: 这是make命令的一个选项，用于指定Makefile文件所在的目录。-C选项后面跟着的是要切换到的目录路径。
 #这意呀着make命令将在指定的目录下执行，而不是在当前目录下。

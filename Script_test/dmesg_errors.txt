@@ -1,0 +1,7 @@
+[    0.717038] RAS: Correctable Errors collector initialized.
+[    3.498341] vmwgfx 0000:00:02.0: [drm] *ERROR* vmwgfx seems to be running on an unsupported hypervisor.
+[    3.498342] vmwgfx 0000:00:02.0: [drm] *ERROR* This configuration is likely broken.
+[    3.498343] vmwgfx 0000:00:02.0: [drm] *ERROR* Please switch to a supported graphics device to avoid problems.
+[    0.233910] ACPI: _OSC evaluation for CPUs failed, trying _PDC
+[ 7846.657978] hello: module verification failed: signature and/or required key missing - tainting kernel
+The number of ERROR:4
