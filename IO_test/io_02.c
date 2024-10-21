@@ -242,7 +242,7 @@ void test8()
                 perror("read /dev/tty");
                 exit(1);
             }
-            sleep(5);
+            sleep(3);
             write(STDOUT_FILENO,MSG_TRY,strlen(MSG_TRY));//提示继续读取
         }
         

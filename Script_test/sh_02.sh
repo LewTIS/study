@@ -29,7 +29,7 @@ do
         \?) 
         # 当getopts遇到它不认识的选项时(如 -j)，它会设置opt为'?'' 
             echo "$0:illegal option " >&2
-            echo "Uage:$0 -i input_fileaaa" >&2
+            echo "Uage:$0 -i input_file" >&2
             exit 1
             ;;
         :)
@@ -47,4 +47,4 @@ if [ -z "$input_file" ]; then
     exit 1  
 fi  
 #调用函数处理文件，并传递给他一个参数
-read_and_printf_file "$input_fi
+read_and_printf_file "$input_file"
