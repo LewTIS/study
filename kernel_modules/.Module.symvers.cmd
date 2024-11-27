@@ -1,1 +1,1 @@
-savedcmd_/home/linux/share/CODE/kernel_modules/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/linux/share/CODE/kernel_modules/Module.symvers -T /home/linux/share/CODE/kernel_modules/modules.order -i Module.symvers -e 
+cmd_/home/linux/share/CODE/kernel_modules/Module.symvers := sed 's/\.ko$$/\.o/' /home/linux/share/CODE/kernel_modules/modules.order | scripts/mod/modpost -m -a  -o /home/linux/share/CODE/kernel_modules/Module.symvers -e -i Module.symvers   -T -

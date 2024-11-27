@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/testFunc.h
+
+../include/testFunc1.h
+stdio.h
+-
+
+/home/linux/share/CODE/C_test/demo/src/main.c
+stdio.h
+-
+testFunc.h
+/home/linux/share/CODE/C_test/demo/src/testFunc.h
+testFunc1.h
+/home/linux/share/CODE/C_test/demo/src/testFunc1.h
+
+/home/linux/share/CODE/C_test/demo/src/testFunc.c
+stdio.h
+-
+testFunc.h
+/home/linux/share/CODE/C_test/demo/src/testFunc.h
+
+/home/linux/share/CODE/C_test/demo/src/testFunc1.c
+testFunc1.h
+/home/linux/share/CODE/C_test/demo/src/testFunc1.h
+

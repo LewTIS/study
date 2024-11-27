@@ -1,0 +1,1 @@
+ACTION=="add", KERNEL=="sd*",ENV{UDISKS_IGNORE}="1"

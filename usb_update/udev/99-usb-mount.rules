@@ -1,0 +1,9 @@
+#检测u盘插入
+KERNEL=="sd*1",SUBSYSTEM=="block",ACTION=="add",RUN+="/usr/bin/systemd-mount --no-block --collect /dev/%k /mnt/usb",RUN+="/usr/local/bin/send_pipe.sh add"
+#u盘移除处理
+KERNEL=="sd*1",SUBSYSTEM=="block",ACTION=="remove",RUN+="/usr/local/bin/send_pipe.sh remove"
+
+
+
+
+

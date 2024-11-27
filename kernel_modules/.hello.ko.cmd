@@ -1,1 +1,1 @@
-savedcmd_/home/linux/share/CODE/kernel_modules/hello.ko := ld -r -m elf_x86_64 -z noexecstack --build-id=sha1  -T scripts/module.lds -o /home/linux/share/CODE/kernel_modules/hello.ko /home/linux/share/CODE/kernel_modules/hello.o /home/linux/share/CODE/kernel_modules/hello.mod.o
+cmd_/home/linux/share/CODE/kernel_modules/hello.ko := ld -r  -m elf_x86_64 -z noexecstack   --build-id=sha1  -T scripts/module.lds -o /home/linux/share/CODE/kernel_modules/hello.ko /home/linux/share/CODE/kernel_modules/hello.o /home/linux/share/CODE/kernel_modules/hello.mod.o;  true

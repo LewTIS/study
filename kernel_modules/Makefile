@@ -1,7 +1,17 @@
-obj-m += hello.o
+
+#obj-m += my_pci_driver.o
+#obj-m +=tasklet.o
+#obj-m +=sim_interrupt.o
+
+#obj-m +=mygpio_dev.o
+
+# obj-m += my_workqueue.o
+# obj-m += my_timer.o 
+ obj-m += hello.o
+# obj-m += mychardev_01.o
 
 all:
-	make -C /lib/modules/$(shell uname -r)/build M=`pwd` modules
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 

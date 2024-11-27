@@ -1,1 +1,1 @@
-savedcmd_/home/linux/share/CODE/kernel_modules/hello.mod := printf '%s\n'   hello.o | awk '!x[$$0]++ { print("/home/linux/share/CODE/kernel_modules/"$$0) }' > /home/linux/share/CODE/kernel_modules/hello.mod
+cmd_/home/linux/share/CODE/kernel_modules/hello.mod := { echo  /home/linux/share/CODE/kernel_modules/hello.o;  echo; } > /home/linux/share/CODE/kernel_modules/hello.mod

@@ -1,0 +1,1 @@
+cmd_/home/linux/share/CODE/kernel_modules/mychardev_01.ko := ld -r  -m elf_x86_64 -z noexecstack   --build-id=sha1  -T scripts/module.lds -o /home/linux/share/CODE/kernel_modules/mychardev_01.ko /home/linux/share/CODE/kernel_modules/mychardev_01.o /home/linux/share/CODE/kernel_modules/mychardev_01.mod.o;  true
