@@ -12,6 +12,7 @@ if [ ! -p "$FIFO" ]; then
     mkfifo "$FIFO"
     chmod 666 "$FIFO"
 fi
+
 #INSERTED：表示USB drive插入并挂载
 #REMOVED：表示USB drive被拔出
 while true; do

@@ -109,10 +109,10 @@ udevd是udev的用户空间守护进程，它负责监听来自内核的设备�
 内核还会在sysfs文件系统中为设备创建一个目录，该目录包含了设备的各种属性和状态信息。
 内核通过发送uevent消息到udev守护进程，通知系统有新设备插入。
 3. udev守护进程
-udev守护进程（udevd）监听/dev和sysfs中的变化。
+udevd监听内核发送的 uevent 消息
 当udev接收到uevent消息时，它会读取与设备相关的sysfs信息。
 4. 规则匹配
-udev根据接收到的uevent消息和sysfs中的信息，查找匹配的规则。
+udevd根据接收到的uevent消息和sysfs中的信息，查找匹配的规则。
 规则文件通常位于/etc/udev/rules.d/和/lib/udev/rules.d/目录下。
 规则文件定义了如何处理特定类型的设备，包括创建或删除设备文件、设置设备权限、运行特定的脚本等。
 5. 规则执行
