@@ -19,7 +19,7 @@ get_active_connection() {
 # 检查互联网连接
 check_internet() {
     echo "Checking internet connection..."
-    if ping -c 1 8.8.8.8 &> /dev/null; then
+    if ping -c 3 w 2 8.8.8.8 &> /dev/null; then
         return 0
     else
         return $E_CONN_LOSS
@@ -70,7 +70,6 @@ log_network_switch() {
 
 # 主函数
 main() {
-    echo "11"
     # 获取当前活动连接
     current_connection=$(get_active_connection)
     echo "Current connection: $current_connection"
@@ -129,6 +128,7 @@ main() {
                     echo "Internet status: $internet_status"
 
                     if [[ $internet_status -ne 0 ]]; then
+                        echo "Ethernet connected but cannot reach the internet"
                         log_error $E_CONN_LOSS "Ethernet connected but cannot reach the internet"
                     else
                         echo "Ethernet is connected and internet is accessible"

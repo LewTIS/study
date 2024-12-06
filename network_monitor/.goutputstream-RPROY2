@@ -1,31 +1,7 @@
 #!/bin/bash
 
-# 错误码
-ERR_NO_INTERFACE=2       # 未找到默认网卡接口
-ERR_NO_GATEWAY=3        # 未找到默认网关
-ERR_NO_CARRIER=4        # 物理连接未连接
-ERR_NO_IP=5            # 未配置IP地址
-ERR_NO_LAN=6           # 无法访问本地网络
-ERR_NO_INTERNET=7      # 无法访问互联网
-ERR_DNS_FAILED=8       # DNS解析失败
-# 2、3、4、5、6 -> ERR_LOCAL_NETWORK=0 
-# 7、8 -> ERR_INTERNET=1
-
-# 错误码(通知)
-ERR_LOCAL_NETWORK=0 # 无法连接本地网络
-ERR_INTERNET=1 # 无法连接互联网
-LOG_FILE="/tmp/network.log"
-
-log_error(){
-    local error_code=$1
-    local error_msg=$2
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - Error $error_code: $error_msg" >> LOG_FILE
-}
-
 echo "=== 网络连接检查 ==="
-check_local_network(){
-    
-}
+
 if ! systemctl is-active NetworkManager >/dev/null 2>&1; then
     echo "NetworkManager 服务未运行"
     echo "启动服务: sudo systemctl start NetworkManager"
