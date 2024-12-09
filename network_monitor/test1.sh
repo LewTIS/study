@@ -10,7 +10,7 @@ ERR_NO_IP=6            # 未配置IP地址
 ERR_NO_LAN=7           # 无法访问本地网络
 ERR_NO_INTERNET=8      # 无法访问互联网
 ERR_DNS_FAILED=9       # DNS解析失败
-# 2、3、4、5、6 -> ERR_LOCAL_NETWORK=0 
+# 3、4、5、6 7-> ERR_LOCAL_NETWORK=0 
 # 7、8 -> ERR_INTERNET=1
 
 # 错误码(通知)
@@ -134,7 +134,7 @@ if [ $local_status -eq 0 ]; then
         exit $ERR_INTERNET
     fi
 else
-   echo "✗ 网络检查完成: 无法连接到本地网络"
+    echo "✗ 网络检查完成: 无法连接到本地网络"
     exit $ERR_LOCAL_NETWORK
 fi
 
