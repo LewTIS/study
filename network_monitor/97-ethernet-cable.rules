@@ -1,0 +1,7 @@
+# 监控网线插入
+ACTION=="change", SUBSYSTEM=="net", KERNEL=="enp0s3", ATTR{carrier}=="1", \
+RUN+="/usr/local/bin/ethernet-cable-monitor.sh connected $env{INTERFACE}"
+
+# 监控网线拔出
+ACTION=="change", SUBSYSTEM=="net", KERNEL=="enp0s3", ATTR{carrier}=="0", \
+RUN+="/usr/local/bin/ethernet-cable-monitor.sh disconnected $env{INTERFACE}"
