@@ -6,19 +6,44 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
+#include <time.h>
+
+// 日志文件路径
+#define LOG_FILE "/var/log/network-status.log"
+
+// 记录日志
+void write_log(const char *message) {
+    time_t now;
+    struct tm *timeinfo;
+    char timestamp[64];
+    
+    // 获取当前时间
+    time(&now);
+    timeinfo = localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
+    
+    // 打开日志文件（追加模式）
+    FILE *log_file = fopen(LOG_FILE, "a");
+    if (log_file != NULL) {
+        fprintf(log_file, "%s - %s\n", timestamp, message);
+        fclose(log_file);
+    }
+}
 
 //发送桌面通知
 void send_notification(const char *message) {
     char command[256];
     snprintf(command, sizeof(command), "notify-send 'Network Status' '%s' -u normal -i network-wired", message);
     system(command);
+
+    write_log(message);
 }
 
 int main() {
     //创建Netlink socket,用于与内核通信，接收网络接口状态变化的消息
     //AF_NETLINK:使用Netlink协议
     //SOCK_RAW:使用原始套接字
-    //NETLINK_ROUTE:用于路由信息的Netlink消息类型
+    //NETLINK_ROUTE:netlink协议类型，用于路由信息的Netlink消息类型
     int sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (sock < 0) {
         perror("socket");
