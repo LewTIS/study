@@ -7,7 +7,7 @@
 #include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <time.h>
-
+#include <linux/if.h>
 // 日志文件路径
 #define LOG_FILE "/var/log/network-status.log"
 
@@ -94,7 +94,7 @@ int main() {
                 struct ifinfomsg *ifi = NLMSG_DATA(nlh);
             //判断网络接口是否处于活动状态
                 //ifi->ifi_flags:表示网络接口的标志，其中 IFF_RUNNING(0x40) 表示网络接口的物理层是否已经建立连接并处于运行状态
-                if (ifi->ifi_flags & IFF_RUNNING) {
+                if (ifi->ifi_flags & IFF_LOWER_UP) {
                     printf("Interface is UP\n");
                     send_notification("Ethernet cable connected");
                 } else {

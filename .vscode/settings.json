@@ -1,6 +1,7 @@
 {
     "files.associations": {
-        "module.h": "c"
+        "module.h": "c",
+        "rtnetlink.h": "c"
     },
     "cmake.sourceDirectory": "D:/share/CODE/C_test/demo"
 }
