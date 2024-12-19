@@ -9,6 +9,10 @@
 #include <time.h>
 #include <linux/if.h>
 #include <stdbool.h>
+#include <linux/if.h>
+#include <arpa/inet.h>
+
+#define INET_ADDRSTRLEN 16
 
 // 日志文件路径
 #define LOG_FILE "/tmp/network-status.log"
@@ -33,67 +37,55 @@ void write_log(const char *message) {
 }
 
 // 发送通知（仅记录日志）
-void send_notification(const char *ifname, const char *status, const char *ip, const char *gateway) {
+void send_notification(const char *ifname, const char *status, const char *ip) {
     char message[256];
-    snprintf(message, sizeof(message), "Interface: %s, Status: %s, IP: %s, Gateway: %s", ifname, status, ip, gateway);
+    snprintf(message, sizeof(message), "Interface: %s, Status: %s, IP: %s", ifname, status, ip);
     write_log(message);
 }
+void send_notification2(const char *ifname, const char *status){
+    char message[256];
+    snprintf(message, sizeof(message), "Interface: %s, Status: %s", ifname, status);
+    write_log(message);
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-
-// 获取 IP 和网关信息
-bool get_ip_and_gateway(const char *ifname, char *ip, char *gateway) {
-    char command[256];
-    char line[256];
-    FILE *fp;
-
-    // 初始化 IP 和网关为 "Not assigned"
-    strcpy(ip, "Not assigned");
-    strcpy(gateway, "Not assigned");
-
-    // 构建命令以获取 IP 地址
-    snprintf(command, sizeof(command), "ip addr show %s | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1", ifname);
-
-    // 执行命令并读取输出
-    fp = popen(command, "r");
-    if (fp == NULL) {
-        perror("popen");
-        return false;
-    }
-
-    // 读取 IP 地址
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        line[strcspn(line, "\n")] = '\0'; // 去掉换行符
-        strncpy(ip, line, 15);
-        ip[15] = '\0';
-    }
-
-    pclose(fp);
-
-    // 构建命令以获取网关地址
-    snprintf(command, sizeof(command), "ip route show default dev %s | awk '{print $3}'", ifname);
-
-    // 执行命令并读取输出
-    fp = popen(command, "r");
-    if (fp == NULL) {
-        perror("popen");
-        return false;
-    }
-
-    // 读取网关地址
-    if (fgets(line, sizeof(line), fp) != NULL) {
-        line[strcspn(line, "\n")] = '\0'; // 去掉换行符
-        strncpy(gateway, line, 15);
-        gateway[15] = '\0';
-    }
-
-    pclose(fp);
-
-    return true;
 }
+// 获取接口名称
+void get_interface_name(int ifindex, char *ifname) {
+    if_indextoname(ifindex, ifname);
+}
+
+// 处理 RTM_NEWADDR 消息
+void handle_newaddr(struct nlmsghdr *nlh) {
+    struct ifaddrmsg *ifa = NLMSG_DATA(nlh);
+    struct rtattr *rta = IFA_RTA(ifa);
+    int rta_len = IFA_PAYLOAD(nlh);
+    char ip[INET_ADDRSTRLEN] = "";
+    char ifname[IF_NAMESIZE] = "";
+
+    get_interface_name(ifa->ifa_index, ifname);
+
+    for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+        if (rta->rta_type == IFA_ADDRESS) {
+            inet_ntop(AF_INET, RTA_DATA(rta), ip, sizeof(ip));
+        }
+    }
+
+    if (strlen(ip) > 0) {
+        send_notification(ifname, "IP assigned", ip);
+    } else {
+        send_notification(ifname, "IP assignment failed", "Not assigned");
+    }
+}
+
+// 处理 RTM_DELADDR 消息
+void handle_deladdr(struct nlmsghdr *nlh) {
+    struct ifaddrmsg *ifa = NLMSG_DATA(nlh);
+    char ifname[IF_NAMESIZE] = "";
+
+    get_interface_name(ifa->ifa_index, ifname);
+
+    send_notification(ifname, "IP unassigned", "Not assigned");
+}
+
 int main() {
     // 创建 Netlink socket, 用于与内核通信，接收网络接口状态变化的消息
     int sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
@@ -105,7 +97,7 @@ int main() {
     struct sockaddr_nl addr;
     memset(&addr, 0, sizeof(addr));
     addr.nl_family = AF_NETLINK;
-    addr.nl_groups = RTMGRP_LINK; // 监听接口状态
+    addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR; // 监听接口状态和 IPv4 地址变化
 
     // 将套接字绑定到指定的地址上
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -126,49 +118,26 @@ int main() {
         // 解析消息
         struct nlmsghdr *nlh = (struct nlmsghdr *)buffer;
         for (; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
-            if (nlh->nlmsg_type == RTM_NEWLINK) {
-                struct ifinfomsg *ifi = NLMSG_DATA(nlh);
-                char ifname[IF_NAMESIZE];
-                if_indextoname(ifi->ifi_index, ifname);
-
-                char ip[16] = "";
-                char gateway[16] = "";
-                if (strcmp(ifname, "eth0") == 0 || strcmp(ifname, "enp0s3") == 0) { // ethernet接口名称
+            switch (nlh->nlmsg_type) {
+                case RTM_NEWLINK:
+                {
+                    struct ifinfomsg *ifi = NLMSG_DATA(nlh);
+                    char ifname[IF_NAMESIZE];
+                    if_indextoname(ifi->ifi_index, ifname);
 
                     if (ifi->ifi_flags & IFF_LOWER_UP) {
-                        sleep(2);
-                        if (get_ip_and_gateway(ifname, ip, gateway)) {
-                            send_notification(ifname, "connected", ip, gateway); 
-                        } else {
-                            send_notification(ifname, "connected", "Failed to get IP", "Failed to get gateway");
-                        }
-                        
+                        send_notification2(ifname, "connected");
                     } else {
-                        sleep(2);
-                        if (get_ip_and_gateway(ifname, ip, gateway)) {
-                            send_notification(ifname, "disconnected", ip, gateway);
-                        } else {
-                            send_notification(ifname, "disconnected", ip, gateway);
-                        }    
-                    }    
-                }else if (strcmp(ifname, "wlan0") == 0 || strcmp(ifname, "wlp2s0") == 0){
-                    if (ifi->ifi_flags & IFF_LOWER_UP) {
-                        sleep(2);
-                        if (get_ip_and_gateway(ifname, ip, gateway)) {
-                            send_notification(ifname, "connected", ip, gateway); 
-                        } else {
-                            send_notification(ifname, "connected", "Failed to get IP", "Failed to get gateway");
-                        }
-                        
-                    } else {
-                        sleep(2);
-                        if (get_ip_and_gateway(ifname, ip, gateway)) {
-                            send_notification(ifname, "disconnected", ip, gateway);
-                        } else {
-                            send_notification(ifname, "disconnected", ip, gateway);
-                        }    
-                    }    
+                        send_notification2(ifname, "disconnected");
+                    }
                 }
+                    break;
+                case RTM_NEWADDR:
+                    handle_newaddr(nlh);
+                    break;
+                case RTM_DELADDR:
+                    handle_deladdr(nlh);
+                    break;
             }
         }
     }

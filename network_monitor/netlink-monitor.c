@@ -31,12 +31,11 @@ void write_log(const char *message) {
     }
 }
 
-// 发送桌面通知
-void send_notification(const char *interface, const char *message) {
-    char command[256];
-    snprintf(command, sizeof(command), "notify-send 'Network Status' '%s: %s' -u normal -i network-wired", interface, message);
-    system(command);
-
+// 发送通知
+void send_notification(const char *interface, const char *status) {
+    char message[256];
+    snprintf(message, sizeof(message), "Interface: %s Status: %s", interface, status);
+    
     write_log(message);
 }
 
@@ -60,6 +59,11 @@ int main() {
         return -1; 
     }
 
+    //存储接口状态
+    int last_wlan_state = 1;
+    int last_eth_state = 1;
+
+
     // 接收消息
     char buffer[4096];
     while (1) {
@@ -79,22 +83,26 @@ int main() {
 
                 // 判断接口类型
                 if (strcmp(ifname, "wlan0") == 0 || strcmp(ifname, "wlp2s0") == 0) { // wifi接口名称
-                    if (ifi->ifi_flags & IFF_LOWER_UP) {
-                        printf("%s is UP\n", ifname);
-                        send_notification(ifname, "Wi-Fi connected");
-                    } else {
+                    if ((ifi->ifi_flags & IFF_LOWER_UP) && !last_wlan_state) {
+                            printf("%s is UP\n", ifname);
+                            send_notification(ifname, " connected");
+                            last_eth_state = 1;
+                    } else if(!(ifi->ifi_flags & IFF_LOWER_UP) && last_wlan_state) {
                         printf("%s is DOWN\n", ifname);
-                        send_notification(ifname, "Wi-Fi disconnected");
+                        send_notification(ifname, " disconnected");
+                        last_wlan_state = 0;
                     }
                 } else if (strcmp(ifname, "eth0") == 0 || strcmp(ifname, "enp0s3") == 0) { // ethernet接口名称
-                    if (ifi->ifi_flags & IFF_LOWER_UP) {
+                    if ((ifi->ifi_flags & IFF_LOWER_UP) && !last_eth_state) {
                         printf("%s is UP\n", ifname);
-                        send_notification(ifname, "Ethernet cable connected");
-                    } else {
+                        send_notification(ifname, " connected");
+                        last_eth_state = 1;
+                    } else if(!(ifi->ifi_flags & IFF_LOWER_UP) && last_eth_state) {
                         printf("%s is DOWN\n", ifname);
-                        send_notification(ifname, "Ethernet cable disconnected");
-                    }
-                }
+                        send_notification(ifname, " disconnected");
+                        last_eth_state = 0;
+                    }        
+                }    
             }
         }
     }
