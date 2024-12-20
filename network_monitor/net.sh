@@ -15,7 +15,7 @@ log_message() {
     local message="$1"
     echo "[$timestamp] $message" >> "$LOG_FILE"
     echo "[$timestamp] $message"
-}
+}    
 #echo $INTERFACE $ACTION
 # 检查 action
 case "$ACTION" in

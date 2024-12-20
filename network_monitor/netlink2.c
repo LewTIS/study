@@ -98,7 +98,7 @@ int main() {
     memset(&addr, 0, sizeof(addr));
     addr.nl_family = AF_NETLINK;
     addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR; // 监听接口状态和 IPv4 地址变化
-
+    
     // 将套接字绑定到指定的地址上
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("bind");
