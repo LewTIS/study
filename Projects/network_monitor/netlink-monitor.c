@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
@@ -18,12 +19,10 @@ void write_log(const char *message) {
     struct tm *timeinfo;
     char timestamp[64];
     
-    // 获取当前时间
     time(&now);
     timeinfo = localtime(&now);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
     
-    // 日志
     FILE *log_file = fopen(LOG_FILE, "a");
     if (log_file != NULL) {
         fprintf(log_file, "%s - %s\n", timestamp, message);
@@ -39,8 +38,32 @@ void send_notification(const char *interface, const char *status) {
     write_log(message);
 }
 
+// 获取接口初始状态
+int get_interface_state(const char *ifname) {
+    struct ifreq ifr;
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        return 0;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, ifname, IFNAMSIZ-1);
+    
+    if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) < 0) {
+        close(sockfd);
+        return 0;
+    }
+    
+    close(sockfd);
+    return (ifr.ifr_flags & IFF_LOWER_UP) ? 1 : 0;
+}
+
 int main() {
-    // 创建 Netlink socket, 用于与内核通信，接收网络接口状态变化的消息
+    // 初始化状态
+    int last_wlan_state = get_interface_state("wlan0");
+    int last_eth_state = get_interface_state("eth0");
+
+    // 创建 Netlink socket
     int sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (sock < 0) {
         perror("socket");
@@ -50,19 +73,13 @@ int main() {
     struct sockaddr_nl addr;
     memset(&addr, 0, sizeof(addr));
     addr.nl_family = AF_NETLINK;
-    addr.nl_groups = RTMGRP_LINK; // 监听接口状态
+    addr.nl_groups = RTMGRP_LINK;
 
-    // 将套接字绑定到指定的地址上
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("bind");
         close(sock);
         return -1; 
     }
-
-    //存储接口状态
-    int last_wlan_state = 1;
-    int last_eth_state = 1;
-
 
     // 接收消息
     char buffer[4096];
@@ -82,27 +99,27 @@ int main() {
                 if_indextoname(ifi->ifi_index, ifname);
 
                 // 判断接口类型
-                if (strcmp(ifname, "wlan0") == 0 || strcmp(ifname, "wlp2s0") == 0) { // wifi接口名称
+                if (strcmp(ifname, "wlan0") == 0) {
                     if ((ifi->ifi_flags & IFF_LOWER_UP) && !last_wlan_state) {
-                            printf("%s is UP\n", ifname);
-                            send_notification(ifname, " connected");
-                            last_eth_state = 1;
-                    } else if(!(ifi->ifi_flags & IFF_LOWER_UP) && last_wlan_state) {
-                        printf("%s is DOWN\n", ifname);
-                        send_notification(ifname, " disconnected");
+                        printf("%s is connected\n", ifname);
+                        send_notification(ifname, "connected");
+                        last_wlan_state = 1;
+                    } else if (!(ifi->ifi_flags & IFF_LOWER_UP) && last_wlan_state) {
+                        printf("%s is disconnected\n", ifname);
+                        send_notification(ifname, "disconnected");
                         last_wlan_state = 0;
                     }
-                } else if (strcmp(ifname, "eth0") == 0 || strcmp(ifname, "enp0s3") == 0) { // ethernet接口名称
+                } else if (strcmp(ifname, "eth0") == 0) {
                     if ((ifi->ifi_flags & IFF_LOWER_UP) && !last_eth_state) {
-                        printf("%s is UP\n", ifname);
-                        send_notification(ifname, " connected");
+                        printf("%s is connected\n", ifname);
+                        send_notification(ifname, "connected");
                         last_eth_state = 1;
-                    } else if(!(ifi->ifi_flags & IFF_LOWER_UP) && last_eth_state) {
-                        printf("%s is DOWN\n", ifname);
-                        send_notification(ifname, " disconnected");
+                    } else if (!(ifi->ifi_flags & IFF_LOWER_UP) && last_eth_state) {
+                        printf("%s is disconnected\n", ifname);
+                        send_notification(ifname, "disconnected");
                         last_eth_state = 0;
-                    }        
-                }    
+                    }
+                }
             }
         }
     }
