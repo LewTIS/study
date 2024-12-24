@@ -30,7 +30,7 @@ esac
 INTERFACE=$1
 MAX_TRIES=5
 SLEEP_TIME=2
-
+  
 log_event() {
     echo "$(date '+%Y-%m-%d %H:%M:%S'): $1" >> /var/log/wifi-monitor/wifi.log
 }

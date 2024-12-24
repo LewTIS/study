@@ -112,7 +112,7 @@ int main() {
                 } else if (strcmp(ifname, "eth0") == 0) {
                     if ((ifi->ifi_flags & IFF_LOWER_UP) && !last_eth_state) {
                         printf("%s is connected\n", ifname);
-                        send_notification(ifname, "connected");
+                        send_notification(ifname, "connected"); 
                         last_eth_state = 1;
                     } else if (!(ifi->ifi_flags & IFF_LOWER_UP) && last_eth_state) {
                         printf("%s is disconnected\n", ifname);
