@@ -1,4 +1,24 @@
-## 1.wifi监控脚本：
+## 1. 工作原理
+- wpa_supplicant：是WiFi連接的核心守護進程，負責處理WiFi連接的狀態。
+- wpa_cli：是WiFi連接的命令行工具，用於與wpa_supplicant進行通信。
+- wpa_cli -a：指定動作腳本
+- 當WiFi狀態變化時，wpa_cli會調用動作腳本
+## 2.主要事件
+- CTRL-EVENT-CONNECTED：wifi連接成功
+- CTRL-EVENT-DISCONNECTED：wifi斷開連接
+![alt text](wpa_cli.png)
+wpa_supplicant 检测到状态变化
+    ↓
+wpa_cli 接收事件
+    ↓
+执行动作脚本
+    ↓
+脚本处理对应事件
+## 3.命令
+- wpa_cli -i wlan0 -a /usr/local/bin/wifi_monitor.sh
+- -i wlan0：指定監控的接口
+- -a /usr/local/bin/wifi_monitor.sh：指定狀態變化時執行的腳本
+## 4.wifi监控脚本：
 ```c
 #!/bin/bash
 # /usr/local/bin/wifi_monitor.sh
@@ -14,7 +34,7 @@ case "$2" in
     "CTRL-EVENT-CONNECTED")
         log_event "WiFi connected - Interface: $1"
         # 启动IP检查脚本，传入接口名称
-        /usr/local/bin/check_ip.sh "$1" &
+        /usr/local/bin/gateway_ping.sh "$1" &
         ;;
     "CTRL-EVENT-DISCONNECTED")
         log_event "WiFi disconnected - Interface: $1"
@@ -22,65 +42,30 @@ case "$2" in
 esac
 ```
 
-## 2. ip、gateway以及gateway连通性检查脚本：
-```c
+## 5. gateway连通性检查脚本：
+```bash
 #!/bin/bash
-# /usr/local/bin/check_ip.sh
 
 INTERFACE=$1
-MAX_TRIES=5
-SLEEP_TIME=2
-  
-log_event() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): $1" >> /var/log/wifi-monitor/wifi.log
+LOG_FILE="/var/log/gateway_ping.log"
+
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
 
-check_network() {
-    # 检查IP地址
-    IP=$(ip addr show dev $INTERFACE | grep "inet " | awk '{print $2}' | cut -d/ -f1)
-    if [ -z "$IP" ]; then
-        log_event "No IP address assigned to $INTERFACE"
-        return 1
-    fi
-    log_event "IP address assigned: $IP"
 
-    # 检查默认网关
-    GATEWAY=$(ip route | grep default | grep $INTERFACE | awk '{print $3}')
-    if [ -z "$GATEWAY" ]; then
-        log_event "No gateway assigned for $INTERFACE"
-        return 1
-    fi
-    log_event "Gateway assigned: $GATEWAY"
 
-    # 测试网关连通性
-    if ! ping -c 1 -W 1 $GATEWAY >/dev/null 2>&1; then
-        log_event "Gateway $GATEWAY is not reachable"
-        return 1
+while true; do
+    GATEWAY=$(ip route show default | awk '{print $3}')
+    if ping -c 1 "$GATEWAY" &> /dev/null; then
+        log_message "Gateway $GATEWAY is reachable from interface $INTERFACE"
+    else
+        log_message "Gateway $GATEWAY is NOT reachable from interface $INTERFACE"
     fi
-    log_event "Gateway $GATEWAY is reachable"
-
-    return 0
-}
-
-# 主循环
-for i in $(seq 1 $MAX_TRIES); do
-    log_event "Attempt $i of $MAX_TRIES checking network configuration..."
-    
-    if check_network; then
-        log_event "Network configuration successful on $INTERFACE"
-        exit 0
-    fi
-    
-    # 如果不是最后一次尝试，则等待后继续
-    if [ $i -lt $MAX_TRIES ]; then
-        sleep $SLEEP_TIME
-    fi
+    sleep 30
 done
-
-log_event "Failed to get proper network configuration after $MAX_TRIES attempts"
-exit 1
 ```
-## 3.集成系统服务systemd
+## 6.集成系统服务systemd
 ```c
 # /etc/systemd/system/wifi-monitor.service
 
@@ -97,7 +82,7 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-## 4.部署
+## 7.部署
 ### 设置执行权限
 - chmod +x /usr/local/bin/wifi_monitor.sh
 - chmod +x /usr/local/bin/check_ip.sh
