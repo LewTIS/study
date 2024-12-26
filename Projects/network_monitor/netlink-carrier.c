@@ -3,17 +3,30 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
-#include <sys/ioctl.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <time.h>
 #include <linux/if.h>
 
-// 日志文件路径
 #define LOG_FILE "/tmp/network-status.log"
 
-// 记录日志
+//  carrier 状态
+int get_interface_state(const char *ifname) {
+    char path[256];
+    char carrier;
+    
+    snprintf(path, sizeof(path), "/sys/class/net/%s/carrier", ifname);
+    FILE *f = fopen(path, "r");
+    if (f == NULL) {
+        return 0;
+    }
+    
+    carrier = fgetc(f);
+    fclose(f);
+    return (carrier == '1');
+}
+
 void write_log(const char *message) {
     time_t now;
     struct tm *timeinfo;
@@ -30,43 +43,54 @@ void write_log(const char *message) {
     }
 }
 
-// 发送通知
 void send_notification(const char *interface, const char *status) {
     char message[256];
-    snprintf(message, sizeof(message), "Interface: %s Status: %s", interface, status);
+    char command[512];
+    const char *icon;
     
-    write_log(message);
-}
-
-// 获取接口初始状态
-int get_interface_state(const char *ifname) {
-    char path[256];
-    char carrier;
-    
-    // 构建 sysfs 路径
-    snprintf(path, sizeof(path), "/sys/class/net/%s/carrier", ifname);
-    
-    // 打开文件
-    FILE *f = fopen(path, "r");
-    if (f == NULL) {
-        printf("Failed to open carrier file for %s\n", ifname);
-        return 0;
+    // 选择图标
+    if (strstr(interface, "wlan") != NULL) {
+        if (strcmp(status, "connected") == 0) {
+            icon = "network-wireless-connected";
+        } else {
+            icon = "network-wireless-disconnected";
+        }
+    } else {
+        if (strcmp(status, "connected") == 0) {
+            icon = "network-wired";
+        } else {
+            icon = "network-wired-disconnected";
+        }
     }
     
-    // 读取状态
-    carrier = fgetc(f);
-    fclose(f);
-    
-    // 返回状态 ('1' = 连接, '0' = 断开)
-    return (carrier == '1');
+    snprintf(message, sizeof(message), "Interface: %s\nStatus: %s", interface, status);
+    // 通知命令
+    snprintf(command, sizeof(command), 
+             "notify-send 'Network Status' '%s' -u normal -i %s", 
+             message, icon);
+    // 发送桌面通知
+    system(command);  
+    write_log(message);
 }
-
+void control_ping_service(const char *action) {
+    char command[256];
+    int ret;
+    
+    snprintf(command, sizeof(command), "systemctl %s gateway_ping.service", action);
+    ret = system(command);
+    
+    if (ret != 0) {
+        char error_msg[512];
+        snprintf(error_msg, sizeof(error_msg), 
+                "Failed to %s gateway_ping service", action);
+        write_log(error_msg);
+    }
+}
 int main() {
     // 初始化状态
     int last_wlan_state = get_interface_state("wlan0");
-    int last_eth_state = get_interface_state("eth0");
+    int last_eth_state = get_interface_state("enp3s0");
 
-    // 创建 Netlink socket
     int sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (sock < 0) {
         perror("socket");
@@ -76,7 +100,7 @@ int main() {
     struct sockaddr_nl addr;
     memset(&addr, 0, sizeof(addr));
     addr.nl_family = AF_NETLINK;
-    addr.nl_groups = RTMGRP_LINK;
+    addr.nl_groups = RTMGRP_LINK;  // 只关注链路状态变化
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("bind");
@@ -84,7 +108,6 @@ int main() {
         return -1; 
     }
 
-    // 接收消息
     char buffer[4096];
     while (1) {
         int len = recv(sock, buffer, sizeof(buffer), 0);
@@ -93,33 +116,41 @@ int main() {
             continue;
         }
 
-        // 解析消息
         struct nlmsghdr *nlh = (struct nlmsghdr *)buffer;
         for (; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
-            if (nlh->nlmsg_type == RTM_NEWLINK) {                      
+            if (nlh->nlmsg_type == RTM_NEWLINK) {
                 struct ifinfomsg *ifi = NLMSG_DATA(nlh);
-                char ifname[IF_NAMESIZE]; 
+                char ifname[IF_NAMESIZE];
                 if_indextoname(ifi->ifi_index, ifname);
 
-                // 判断接口类型
+                // 获取当前 carrier 状态
+                int current_state = get_interface_state(ifname);
+
+                // WiFi 接口
                 if (strcmp(ifname, "wlan0") == 0) {
-                    if ((ifi->ifi_flags & IFF_LOWER_UP) && !last_wlan_state) {
+                    if (current_state && !last_wlan_state) {
                         printf("%s is connected\n", ifname);
                         send_notification(ifname, "connected");
+                        control_ping_service("start");
                         last_wlan_state = 1;
-                    } else if (!(ifi->ifi_flags & IFF_LOWER_UP) && last_wlan_state) {
+                    } else if (!current_state && last_wlan_state) {
                         printf("%s is disconnected\n", ifname);
                         send_notification(ifname, "disconnected");
+                        control_ping_service("stop");
                         last_wlan_state = 0;
                     }
-                } else if (strcmp(ifname, "enp3s0") == 0) {
-                    if ((ifi->ifi_flags & IFF_LOWER_UP) && !last_eth_state) {
+                }
+                // 以太网接口
+                else if (strcmp(ifname, "enp3s0") == 0) {
+                    if (current_state && !last_eth_state) {
                         printf("%s is connected\n", ifname);
-                        send_notification(ifname, "connected"); 
+                        send_notification(ifname, "connected");
+                        control_ping_service("start");
                         last_eth_state = 1;
-                    } else if (!(ifi->ifi_flags & IFF_LOWER_UP) && last_eth_state) {
+                    } else if (!current_state && last_eth_state) {
                         printf("%s is disconnected\n", ifname);
                         send_notification(ifname, "disconnected");
+                        control_ping_service("stop");
                         last_eth_state = 0;
                     }
                 }
