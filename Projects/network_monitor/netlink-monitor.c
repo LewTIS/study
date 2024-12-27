@@ -96,7 +96,7 @@ int main() {
         // 解析消息
         struct nlmsghdr *nlh = (struct nlmsghdr *)buffer;
         for (; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
-            if (nlh->nlmsg_type == RTM_NEWLINK) {                      
+            if (nlh->nlmsg_type == RTM_NEWLINK) {                       
                 struct ifinfomsg *ifi = NLMSG_DATA(nlh);
                 char ifname[IF_NAMESIZE]; 
                 if_indextoname(ifi->ifi_index, ifname);
