@@ -28,7 +28,7 @@ mkdir -p /var/log/wifi-monitor
 
 log_event() {
     echo "$(date '+%Y-%m-%d %H:%M:%S'): $1" >> /var/log/wifi-monitor/wifi.log
-}
+} 
 
 case "$2" in
     "CTRL-EVENT-CONNECTED")
@@ -52,7 +52,7 @@ LOG_FILE="/var/log/gateway_ping.log"
 log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
-
+   
 
 
 while true; do
