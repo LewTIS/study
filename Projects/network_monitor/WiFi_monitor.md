@@ -41,7 +41,7 @@ case "$2" in
         ;;
 esac
 ```
-
+ 
 ## 5. gateway连通性检查脚本：
 ```bash
 #!/bin/bash
