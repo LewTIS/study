@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import os
 import asyncio
@@ -19,12 +18,12 @@ logging.basicConfig(
 
 class NetworkMonitor:
     def __init__(self):
-        self.ip = IPRoute()
-        self.selector = selectors.DefaultSelector()
-        self.monitored_interfaces = ['wlan0', 'enp3s0']
+        self.ip = IPRoute() # 创建IPRoute对象，用于与 Linux 内核的网络子系统进行通信
+        self.selector = selectors.DefaultSelector() # 创建selector对象,监视文件描述符
+        self.monitored_interfaces = ['wlan0', 'enp3s0'] # 监控的接口列表
         
     def handle_event(self, fileobj, mask):
-        """处理网络事件"""
+       # 处理网络事件
         for msg in self.ip.get():
             if msg['event'] == 'RTM_NEWLINK':
                 ifname = msg.get_attr('IFLA_IFNAME')
@@ -36,7 +35,7 @@ class NetworkMonitor:
                         logging.info(f"Interface: {ifname} - Status: {status}")
 
     async def monitor(self):
-        """开始监控网络接口"""
+        # 开始监控网络接口状态
         try:
             logging.info("Network monitoring started")
             
@@ -68,13 +67,13 @@ class NetworkMonitor:
             self.cleanup()
             
     def cleanup(self):
-        """清理资源"""
+        # 清理资源
         self.selector.close()
         self.ip.close()
         logging.info("Network monitoring stopped")
 
 async def main():
-    """主函数"""
+    # 启动监控
     monitor = NetworkMonitor()
     try:
         await monitor.monitor()

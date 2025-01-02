@@ -22,7 +22,7 @@ def get_carrier_state(interface):
             return f.read().strip() == "1"
     except:
         return False
-
+      
 def monitor_interfaces():
     """监控网络接口状态"""
     ip = IPRoute()
