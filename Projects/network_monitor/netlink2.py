@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 from pyroute2 import IPRoute
 from pyroute2.netlink.rtnl import RTMGRP_LINK
 import logging
@@ -16,19 +15,19 @@ logging.basicConfig(
 
 class NetworkMonitor:
     def __init__(self):
-        self.ip = IPRoute()
-        self.monitored_interfaces = ['wlan0', 'enp3s0']
-        self.last_carrier = {}
-        self.init_interface_states()
-        
+        self.ip = IPRoute() # 创建IPRoute对象，创建套接字与内核通信
+        self.monitored_interfaces = ['wlan0', 'enp3s0'] # 监控的接口列表
+        self.last_carrier = {} # 存储每个接口的上一次状态
+        self.init_interface_states() # 初始化接口状态
+    # 获取接口的carrier状态
     def get_carrier_state(self, ifname):
         try:
             with open(f"/sys/class/net/{ifname}/carrier") as f:
                 return int(f.read().strip())
         except:
             return 0
-        
-    def init_interface_states(self):
+    # 初始化接口状态 
+    def init_interface_states(self): 
         for ifname in self.monitored_interfaces:
             carrier = self.get_carrier_state(ifname)
             self.last_carrier[ifname] = carrier
@@ -39,15 +38,15 @@ class NetworkMonitor:
             self.ip.bind(groups=RTMGRP_LINK)
             
             while True:
-                for msg in self.ip.poll(): # 等待事件，这里也可以使用get()方法 
-                    if msg['event'] == 'RTM_NEWLINK':
+                for msg in self.ip.poll(): # 等待事件
+                    if msg['event'] == 'RTM_NEWLINK': # 接口状态变化事件
                         ifname = msg.get_attr('IFLA_IFNAME')
                         if ifname in self.monitored_interfaces:
-                            carrier = msg.get_attr('IFLA_CARRIER')
+                            carrier = msg.get_attr('IFLA_CARRIER') # 获取carrier状态
                             if carrier is not None:
                                 if self.last_carrier.get(ifname) != carrier:
-                                    status = "connected" if carrier == 1 else "disconnected"
-                                    logging.info(f"Interface: {ifname} - Status: {status}")
+                                    status = "connected" if carrier == 1 else "disconnected" 
+                                    logging.info(f"Interface: {ifname} - Status: {status}") # 记录日志
                                     print(f"Interface: {ifname} - Status: {status}")
                                     self.last_carrier[ifname] = carrier
                     
@@ -55,7 +54,7 @@ class NetworkMonitor:
             logging.error(f"Error in monitor: {e}")
         finally:
             self.cleanup()
-            
+    # 清理资源        
     def cleanup(self):
         self.ip.close()
         logging.info("Network monitoring stopped")
@@ -65,4 +64,4 @@ if __name__ == '__main__':
         monitor = NetworkMonitor()
         monitor.run()
     except KeyboardInterrupt:
-        logging.info("Program stopped by user")
+        pass
