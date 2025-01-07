@@ -4,5 +4,6 @@
         "rtnetlink.h": "c",
         "stdio.h": "c"
     },
-    "cmake.sourceDirectory": "D:/share/CODE/C_test/demo"
+    "cmake.sourceDirectory": "D:/share/CODE/C_test/demo",
+    "Codegeex.CompletionDelay": 0.5
 }
