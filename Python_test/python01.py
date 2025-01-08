@@ -2,6 +2,7 @@
 
 import math
 import time
+import random
 """
 print("hello,world")
 x = input("please input x:")
@@ -63,7 +64,7 @@ for k,v in myinfor.items():
     infor[v] = k
 infor2 = dict(zip(myinfor.values(),myinfor.keys()))
 print(infor2)
-"""
+
 
 start = time.time()
 lst = [i*i for i in range(100000)]
@@ -81,3 +82,67 @@ delta2 = end2 - start2
 
 print(f'for loop time: {delta2}')
 print(f'(list comprehension) / (for loop) = {delta/delta2:.3f}')
+
+def guess_num():
+    random_num = random.randint(1,100)
+    while(1):
+        print('Please input a number 1~100:')
+        num = int(input())
+        if num > 100 or num < 1:
+            print('out of range')
+            continue
+        if num > random_num:
+            print('your number is bigger')
+        elif num < random_num:
+            print('your number is samller')
+        else:
+            print('correct')
+            break
+guess_num()
+
+
+if __name__ == "__main__":
+    for i in range(1,10):
+        for j in range (1,i+1):
+            print(f'{j}x{i}={i*j}',end=" ")
+
+        print()
+"""
+# fibonacci num
+def fibo_num(n):
+    lst = [0,1]
+    for i in range(n-2):
+        lst.append(lst[-1]+lst[-2])
+    return lst
+def fibo_num2(n):
+    lst = [0 ,1]
+    for i in range(2,n):
+        lst.append(lst[i-2]+lst[i-1])
+    return lst
+def fibo_num1(n):
+    if n == 1:
+        return 0
+    if n == 2:
+        return 1
+    n1,n2 = 0,1
+    for i in range(2,n):
+        n3 = n1+n2
+        n1 = n2
+        n2 = n3
+    return n3
+
+def is_prime(n):
+    if n<=1:
+        return False
+    for i in range(2,int(math.sqrt(n))+1):
+        if n % i == 0:
+            return False
+    return True
+
+def choice(*args):
+    return [ i for i in args if is_prime(i)]
+if __name__ =="__main__":
+    #result = fibo_num(10)
+    # result = fibo_num1(10)
+    prime_number=choice(1,3,5,7,9,11,13,15,17,19)
+    print (prime_number)
