@@ -107,7 +107,7 @@ if __name__ == "__main__":
             print(f'{j}x{i}={i*j}',end=" ")
 
         print()
-"""
+
 # fibonacci num
 def fibo_num(n):
     lst = [0,1]
@@ -146,3 +146,153 @@ if __name__ =="__main__":
     # result = fibo_num1(10)
     prime_number=choice(1,3,5,7,9,11,13,15,17,19)
     print (prime_number)
+    
+
+import sys
+
+def test():
+    args = sys.argv
+    if len(args) == 1:
+        print("hello,world!")
+    elif len(args) == 2:
+        print(f'hello,{args[1]}!')
+    else:
+        print("too many arguments!")
+    print(__name__)
+
+if __name__ == '__main__':
+    test()
+    
+import hello
+
+result = hello.greet('lee')
+print(result)
+
+
+class Student:
+    def __init__(self,name,score,gender):
+        self.name = name
+        self.score = score
+        self.__gender = gender
+    
+    def get_score(self):
+        print(f'{self.name}:{self.score}')
+
+    def get_gender(self):
+        return self.__gender
+    
+    def set_gender(self,gender1):
+        self.__gender =gender1
+
+    def get_grade(self):
+        if self.score >= 90:
+            return 'A'
+        elif self.score >=60:
+            return 'B'
+        else:
+            return 'C'
+        
+    
+bart = Student('Bart Simpson',78,'male')
+if bart.get_gender() != 'male':
+    print('failed')
+else:
+    bart.set_gender('female')
+    if bart.get_gender() != 'female':
+        print('failed')
+    else:
+        print('success')
+
+class Animal:
+    def run(self):
+        print('Animal is running...')
+
+class Dog(Animal):
+    def run(self):
+        print('Dog is running...')
+    def eat(self):
+        print('Eating meat...')
+
+class Cat(Animal):
+    def run(self):
+        print('Cat is running...')
+    def eat(self):
+        print('Eating fish...')
+class Tortoise:
+    def run(self):
+        print('Tortoise is running slowly...')
+dog = Dog()
+cat = Cat()
+def run_twice(animal):
+    animal.run()
+
+run_twice(Animal())
+run_twice(Dog())
+run_twice(Cat())
+run_twice(Tortoise())
+
+
+
+class Student():
+    count = 0
+    def __init__(self,name):
+        self.name = name
+        #self.increment_count()
+        Student.count += 1
+    
+    @classmethod
+    def increment_count(cls):
+        cls.count +=1
+        
+
+
+if Student.count !=0:
+    print('failed!')
+else:
+    bart = Student('Bart')
+    if Student.count != 1:
+        print('failed2')
+    else:
+        lisa = Student('lisa')
+        if Student.count != 2:
+            print('failed')
+        else:
+            print(f'students:{Student.count}') 
+            print('success')  
+print(lisa.count)
+
+"""
+
+class Screen:
+    @property
+    def width(self):
+        return self._width
+    
+    @width.setter 
+    def width(self,value):
+        if not isinstance(value,int): 
+            raise ValueError('value must be an interger!')  
+        else:
+            self._width = value
+    
+    @property
+    def height(self):
+        return self._height
+    @width.setter
+    def height(self,value):
+        if not isinstance(value,int):
+            raise ValueError('value must be an interger!')
+        else:
+            self._height = value
+
+    @property
+    def resolution(self):
+        return self._height*self._width
+s = Screen()
+s.width = 1024
+s.height = 768
+print(f'resolution = {s.resolution}')
+if s.resolution == 786432: 
+    print('success')
+else:
+    print('failed')
