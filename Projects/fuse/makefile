@@ -1,2 +1,2 @@
 all:
-	gcc -Wall -o hello_fuse hello.c `pkg-config --cflags --libs fuse`
+	gcc -Wall network_fuse.c `pkg-config fuse libnm --cflags --libs` -o network_fs
