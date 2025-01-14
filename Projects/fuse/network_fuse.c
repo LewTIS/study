@@ -13,88 +13,99 @@
 #include <nm-device.h>
 #include <nm-device-ethernet.h>
 #include <nm-device-wifi.h>
+#include <nm-ip-config.h>
+
 
 // 文件内容
 static char lan_content[1024] = "192.168.1.100\n";
 static char wifi_content[1024] = "192.168.2.100\n";
 
 static NMClient *nm_client = NULL;
+
 // 获取设备IP地址
-static char *get_device_ip(const char *iface)
+// ... 前面的代码保持不变 ...
+
+// 获取设备 IP 地址
+static char* get_device_ip(const char* iface)
 {
     NMDevice *device;
-    NMIP4Config *ip4_config;
+    NMIPConfig *ip4_config;
     GPtrArray *addresses;
-    static char ip_str[16];// 存储IP地址
-
-    //获取网络设备
-    device = nm_client_get_device_by_iface(nm_client,iface);
-    if(!device){
-        sprintf(ip_str,"0.0.0.0\n");
+    static char ip_str[16];  // 存储 IP 地址的缓冲区
+    
+    // 获取网络设备
+    device = nm_client_get_device_by_iface(nm_client, iface);
+    if (!device) {
+        sprintf(ip_str, "0.0.0.0\n");
         return ip_str;
     }
 
-    //获取IPv4配置
-    ip4_config = nm_ip4_config_get_addresses(device);
-    if(!ip4_config){
-        sprintf(ip_str,"0.0.0.0\n");
+    // 获取 IPv4 配置
+    ip4_config = nm_device_get_ip4_config(device);
+    if (!ip4_config) {
+        sprintf(ip_str, "0.0.0.0\n");
         return ip_str;
     }
 
-    //获取地址列表
-    addresses = nm_ip4_config_get_addresses(ip4_config);
-    if(!addresses || !addresses->len){
-        sprintf(ip_str,"0.0.0.0\n");
+    // 获取地址列表
+    addresses = nm_ip_config_get_addresses(ip4_config);
+    if (!addresses || !addresses->len) {
+        sprintf(ip_str, "0.0.0.0\n");
         return ip_str;
     }
 
-    //获取第一个地址
-    NMIP4Address *addr = g_ptr_array_index(addresses, 0);
-    guint32 ip = nm_ip4_address_get_address(addr);
-    // 转换为字符串
-    sprintf(ip_str, "%d.%d.%d.%d\n",
-            (ip >> 24) & 0xFF,
-            (ip >> 16) & 0xFF,
-            (ip >> 8) & 0xFF,
-            ip & 0xFF);
+    // 获取第一个地址
+    NMIPAddress *addr = g_ptr_array_index(addresses, 0);
+    const char *ip_string = nm_ip_address_get_address(addr);
+    
+    // 复制 IP 地址并添加换行符
+    snprintf(ip_str, sizeof(ip_str), "%s\n", ip_string);
     
     return ip_str;
 }
 
-//设置ip地址
-static int set_device_ip(const char *iface,const char *ip_str)
+// 设置设备 IP 地址
+static int set_device_ip(const char* iface, const char* ip_str)
 {
     NMDevice *device;
-    NMConnection *connection;
+    NMActiveConnection *active_connection;
+    NMRemoteConnection *connection;  
     NMSettingIPConfig *s_ip4;
     GError *error = NULL;
-
-    //获取网络设备
-    device = nm_client_get_device_by_iface(nm_client,iface);
-    if(!device){
+    
+    // 获取网络设备
+    device = nm_client_get_device_by_iface(nm_client, iface);
+    if (!device) {
         return -1;
     }
 
-    //获取当前活动连接
-    connection = NM_CONNECTION(nm_device_get_active_connection(device));
-    if (!connection){
+    // 获取当前活动连接
+    active_connection = nm_device_get_active_connection(device);
+    if (!active_connection) {
         return -1;
     }
 
-    //获取IPv4配置
-    s_ip4 = nm_connection_get_setting_ip4_config(connection);
-    if(!s_ip4){
+    // 获取连接
+    connection = NM_REMOTE_CONNECTION(nm_active_connection_get_connection(active_connection));  // 修改为向下转换
+    if (!connection) {
+        return -1;
+    }
+
+    // 获取 IPv4 配置
+    s_ip4 = nm_connection_get_setting_ip4_config(NM_CONNECTION(connection));
+    if (!s_ip4) {
         s_ip4 = (NMSettingIPConfig *)nm_setting_ip4_config_new();
-        nm_connection_add_setting(connection, NM_SETTING(s_ip4));
+        nm_connection_add_setting(NM_CONNECTION(connection), NM_SETTING(s_ip4));
     }
-    //清除现有IP地址
-    nm_setting_ip4_config_clear_addresses(s_ip4);
 
-    //添加新地址
+    // 清除现有 IP 地址
+    nm_setting_ip_config_clear_addresses(s_ip4);
+
+    // 添加新地址
     NMIPAddress *addr;
-    addr = nm_ip_address_new(AF_INET,ip_str,24,&error);
-    if(!addr){
-        if(error){
+    addr = nm_ip_address_new(AF_INET, ip_str, 24, &error);
+    if (!addr) {
+        if (error) {
             g_error_free(error);
         }
         return -1;
@@ -103,12 +114,16 @@ static int set_device_ip(const char *iface,const char *ip_str)
     nm_setting_ip_config_add_address(s_ip4, addr);
     nm_ip_address_unref(addr);
 
-    //保存并应用更改
-    if(!nm_connection_commit_changes(connection, TRUE, NULL)){
+    // 保存并应用更改
+    if (!nm_remote_connection_commit_changes(connection, TRUE, NULL, &error)) {  // 修改为正确的参数
+        if (error) {
+            g_error_free(error);
+        }
         return -1;
     }
     return 0;
 }
+
 
 // 获取文件属性
 static int network_getattr(const char *path, struct stat *stbuf)
@@ -124,6 +139,12 @@ static int network_getattr(const char *path, struct stat *stbuf)
 
     // network 目录
     if (strcmp(path, "/network") == 0) {
+        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_nlink = 2;
+        return 0;
+    }
+    // service 目录
+    if (strcmp(path,"/service") == 0) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
         return 0;
@@ -186,7 +207,7 @@ static int network_read(const char *path, char *buf, size_t size, off_t offset,
 
     // LAN 文件
     if (strcmp(path, "/network/LAN") == 0) {
-        content = get_device_ip("enp3s0");
+        content = get_device_ip("enp0s3");
         len = strlen(content);
         if (offset < len) {
             if (offset + size > len)
@@ -234,9 +255,9 @@ static int network_write(const char *path, const char *buf, size_t size,
     if (newline)
         *newline = '\0';
 
-    // LAN 文件 - 设置 enp3s0 的 IP
+    // LAN 文件 - 设置 enp0s3 的 IP
     if (strcmp(path, "/network/LAN") == 0) {
-        if (set_device_ip("enp3s0", ip_str) != 0)
+        if (set_device_ip("enp0s3", ip_str) != 0)
             return -EIO;
         return size;
     }
@@ -294,7 +315,7 @@ static struct fuse_operations network_oper = {
 
 int main(int argc, char *argv[])
 {
-     GError *error = NULL;
+    GError *error = NULL;
 
     // 初始化 NetworkManager 客户端
     nm_client = nm_client_new(NULL, &error);
@@ -306,7 +327,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // 运行 FUSE
     int ret = fuse_main(argc, argv, &network_oper, NULL);
 
     // 清理
