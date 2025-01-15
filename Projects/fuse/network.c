@@ -11,10 +11,10 @@
 
 // 文件内容缓存
 static char lan_content[1024] = "192.168.1.100\n";
-static char timezone_content[1024] = "Asia/Shanghai (CST, +0800)\n";
+//static char timezone_content[1024] = "Asia/Shanghai (CST, +0800)\n";
 
 // 获取设备 IP 地址
-static char* get_device_ip(const char* iface)
+static char *get_device_ip(const char* iface)
 {
     static char ip_str[16];  // 存储 IP 地址的缓冲区
     char cmd[256];
@@ -28,7 +28,6 @@ static char* get_device_ip(const char* iface)
         fprintf(stderr, "Invalid interface name\n");
         return ip_str;
     }
-
     // 构造命令
     if (snprintf(cmd, sizeof(cmd), "nmcli -g IP4.ADDRESS device show %s", iface) >= sizeof(cmd)) {
         fprintf(stderr, "Command too long\n");
@@ -92,7 +91,7 @@ static int set_device_ip(const char* iface, const char* ip_str)
     ret = snprintf(cmd, sizeof(cmd), 
                   "nmcli connection modify \"%s\" ipv4.method manual ipv4.addresses \"%s/24\"",
                   conn_name, ip_str);
-    if (ret < 0 || ret >= sizeof(cmd)) {
+    if (ret >= sizeof(cmd)) {
         fprintf(stderr, "Command buffer too small\n");
         return -1;
     }
@@ -104,7 +103,7 @@ static int set_device_ip(const char* iface, const char* ip_str)
 
     // 2. 重新激活连接
     ret = snprintf(cmd, sizeof(cmd), "nmcli connection up \"%s\"", conn_name);
-    if (ret < 0 || ret >= sizeof(cmd)) {
+    if (ret >= sizeof(cmd)) {
         fprintf(stderr, "Command buffer too small\n");
         return -1;
     }
@@ -116,7 +115,81 @@ static int set_device_ip(const char* iface, const char* ip_str)
 
     return 0;
 }
+//获取系统时区
+static char *get_timezone()
+{
+    static char timezone[256]="CST";
+    char cmd[256];
+    FILE *fp;
+    char buf[256];
+    
+    // 构造命令-获取系统时区
+    if(snprintf(cmd,sizeof(cmd),"timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'") >= sizeof(cmd))
+    {
+        fprintf(stderr,"Command too long\n");
+        return timezone;
+    }
+    // 执行命令
+    fp = popen(cmd,"r");
+    
+    if(!fp)
+    {
+        fprintf(stderr,"Failed to execute command\n");
+        return timezone;
+    }
+    
+    // 读取输出
+    if(fgets(buf,sizeof(buf),fp) != NULL)
+    {
+        if(snprintf(timezone,sizeof(timezone),"%s",buf) >= sizeof(timezone))
+        {
+            fprintf(stderr,"Timezone too long\n");
+            sprintf(timezone,"CST");
+        }
+    }
+    pclose(fp);
+    return timezone;
+}
 
+// 设置系统时区
+//sudo timedatectl set-timezone 时区名称
+static int set_timezone(const char *timezone)
+{
+    char cmd[256];
+    int ret;
+
+    if(!timezone)
+    {
+        fprintf(stderr,"Invalid parameters\n");
+        return -1;
+    }
+
+    ret = snprintf(cmd, sizeof(cmd),"timedatectl set-timezone %s", timezone);
+    if(ret >= sizeof(cmd))
+    {
+        fprintf(stderr,"Command buffer too small\n");
+        return -1;
+    }
+
+    if (system(cmd) != 0)
+    {
+        fprintf(stderr,"Failed to execute command\n");
+        return -1;
+    }
+
+    /*
+    char *new_timezone = get_timezone();
+    size_t len = strlen(new_timezone);
+    if(len > 0 && new_timezone[len-1] == '\n')
+    {
+        new_timezone[len-1] = '\0';
+    }
+    snprintf(timezone_content,sizeof(timezone_content),"%s\n",new_timezone);
+    */
+    return 0;
+}
+
+//获取目录/文件的属性
 static int network_getattr(const char *path, struct stat *stbuf)
 {
     memset(stbuf, 0, sizeof(struct stat));
@@ -160,9 +233,10 @@ static int network_getattr(const char *path, struct stat *stbuf)
 
     // timezone 文件
     if(strcmp(path, "/service/timezone") == 0) {
+        char *timezone = get_timezone();
         stbuf->st_mode = S_IFREG | 0666;
         stbuf->st_nlink = 1;
-        stbuf->st_size = strlen(timezone_content);
+        stbuf->st_size = strlen(timezone) + 1;
         stbuf->st_uid = getuid();
         stbuf->st_gid = getgid();
         return 0;
@@ -170,6 +244,7 @@ static int network_getattr(const char *path, struct stat *stbuf)
 
     return -ENOENT;
 }
+
 
 // 读取目录内容
 static int network_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
@@ -219,11 +294,12 @@ static int network_read(const char *path, char *buf, size_t size, off_t offset,
         return size;
     }
     if (strcmp(path,"/service/timezone") == 0) {
-        len = strlen(timezone_content);
+        content = get_timezone();
+        len = strlen(content);
         if(offset < len) {
             if(offset + size > len)
                 size = len - offset;
-            memcpy(buf, timezone_content + offset, size);
+            memcpy(buf, content + offset, size);
         }else
             size = 0;
         return size;
@@ -262,9 +338,10 @@ static int network_write(const char *path, const char *buf, size_t size,
         return size;
     }
     if (strcmp(path,"/service/timezone") == 0) {
-        if (size >= sizeof(timezone_content))
-            return -EFBIG;
-        memcpy(timezone_content,buf,size);
+        
+        if (set_timezone(buf) != 0)
+            return -EIO;
+        
         return size;
     }
 
@@ -279,21 +356,20 @@ static int network_open(const char *path, struct fuse_file_info *fi)
 
     return -ENOENT;
 }
-
-// 截断文件
 static int network_truncate(const char *path, off_t size)
 {
     if (strcmp(path, "/network/LAN") == 0) {
         if (size >= sizeof(lan_content))
             return -EFBIG;
+
         lan_content[size] = '\0';
         return 0;
     }
-
-    if (strcmp(path, "/service/timezone") == 0) {
-        if (size >= sizeof(timezone_content))
+    if (strcmp(path,"/service/timezone") == 0) {
+        if(size >= 1024)
             return -EFBIG;
-        timezone_content[size] = '\0';
+        
+        //timezone_content[size] = '\0';
         return 0;
     }
 
