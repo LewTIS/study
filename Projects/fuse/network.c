@@ -10,7 +10,7 @@
 #include <time.h>
 
 // 文件内容缓存
-static char lan_content[1024] = "192.168.1.100\n";
+//static char lan_content[1024] = "192.168.1.100\n";
 //static char timezone_content[1024] = "Asia/Shanghai (CST, +0800)\n";
 
 // 获取设备 IP 地址
@@ -58,7 +58,7 @@ static char *get_device_ip(const char* iface)
 // 设置设备 IP 地址
 static int set_device_ip(const char* iface, const char* ip_str)
 {
-    char cmd[1024];  // 增加缓冲区大小
+    char cmd[1024];  
     char conn_name[256];
     FILE *fp;
     int ret;
@@ -82,14 +82,18 @@ static int set_device_ip(const char* iface, const char* ip_str)
         return -1;
     }
     pclose(fp);
-
+    
     // 去掉连接名称末尾的换行符
     conn_name[strcspn(conn_name, "\n")] = 0;
 
-    // 分两步执行命令，避免命令行过长
-    // 1. 修改连接
+    
+    // 1. 修改连接  设置ip地址
     ret = snprintf(cmd, sizeof(cmd), 
-                  "nmcli connection modify \"%s\" ipv4.method manual ipv4.addresses \"%s/24\"",
+                  "nmcli connection modify \"%s\" "
+                  "ipv4.method manual "
+                  "ipv4.addresses \"%s/24\" "
+                  "ipv4.gateway \"10.0.2.2\" "
+                  "ipv4.dns \"8.8.8.8,8.8.4.4\"",
                   conn_name, ip_str);
     if (ret >= sizeof(cmd)) {
         fprintf(stderr, "Command buffer too small\n");
@@ -223,7 +227,8 @@ static int network_getattr(const char *path, struct stat *stbuf)
 
     // LAN 文件
     if (strcmp(path, "/network/LAN") == 0) {
-        stbuf->st_mode = S_IFREG | 0666;  // 修改为 666 权限
+        char *lan_content = get_device_ip("enp0s3");
+        stbuf->st_mode = S_IFREG | 0666;  
         stbuf->st_nlink = 1;
         stbuf->st_size = strlen(lan_content);
         stbuf->st_uid = getuid();
@@ -328,15 +333,13 @@ static int network_write(const char *path, const char *buf, size_t size,
         if (newline)
             *newline = '\0';
 
-        // 更新 lan_content
-        snprintf(lan_content, sizeof(lan_content), "%s\n", ip_str);
-
         // 设置设备 IP
         if (set_device_ip("enp0s3", ip_str) != 0)
             return -EIO;
 
         return size;
     }
+    
     if (strcmp(path,"/service/timezone") == 0) {
         
         if (set_timezone(buf) != 0)
@@ -359,17 +362,11 @@ static int network_open(const char *path, struct fuse_file_info *fi)
 static int network_truncate(const char *path, off_t size)
 {
     if (strcmp(path, "/network/LAN") == 0) {
-        if (size >= sizeof(lan_content))
-            return -EFBIG;
-
-        lan_content[size] = '\0';
+        
         return 0;
     }
     if (strcmp(path,"/service/timezone") == 0) {
-        if(size >= 1024)
-            return -EFBIG;
         
-        //timezone_content[size] = '\0';
         return 0;
     }
 
