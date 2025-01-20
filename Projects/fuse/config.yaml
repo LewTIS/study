@@ -1,0 +1,26 @@
+files:
+  network/LAN:
+    mode: 0666
+    read_cmd: "nmcli -g IP4.ADDRESS device show enp0s3"
+    write_cmd: >
+      nmcli device modify enp0s3
+      ipv4.method manual
+      ipv4.addresses "{value}/24"
+      ipv4.gateway "10.0.2.2"
+      ipv4.dns "10.180.8.13,10.180.8.12"
+    process_output: |
+      if '/' in output:
+          output = output.split('/')[0]
+    default_value: "0.0.0.0"
+
+  service/timezone:
+    mode: 0666
+    read_cmd: "timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"
+    write_cmd: "timedatectl set-timezone {value}"
+    default_value: "Unknown"
+
+  system/hostname:
+    mode: 0666
+    read_cmd: "hostname"
+    write_cmd: "hostnamectl set-hostname {value}"
+    default_value: "unknown"
