@@ -8,9 +8,9 @@ files:
       ipv4.addresses "{value}/24"
       ipv4.gateway "10.0.2.2"
       ipv4.dns "10.180.8.13,10.180.8.12"
-    process_output: |
+    process_output: | # 处理获取的ip地址，移除子网掩码部分 按照'/'分割字符串，取第一个元素
       if '/' in output:
-          output = output.split('/')[0]
+          output = output.split('/')[0]  
     default_value: "0.0.0.0"
 
   service/timezone:
@@ -18,9 +18,4 @@ files:
     read_cmd: "timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"
     write_cmd: "timedatectl set-timezone {value}"
     default_value: "Unknown"
-
-  system/hostname:
-    mode: 0666
-    read_cmd: "hostname"
-    write_cmd: "hostnamectl set-hostname {value}"
-    default_value: "unknown"
+  
