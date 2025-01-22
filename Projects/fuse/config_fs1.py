@@ -22,8 +22,8 @@ logging.basicConfig(
 class VirtualFile(ABC):
     """虚拟文件基类"""
     def __init__(self, config: Dict[str, Any]): #接收一个字典类型的参数
-        self.mode = config.get('mode', 0o666)
-        self.config = config
+        self.mode = config.get('mode', 0o666) 
+        self.config = config    
 
     @abstractmethod
     def read(self) -> str:
@@ -65,15 +65,16 @@ class CommandFile(VirtualFile):
 class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
     """配置文件系统"""
     def __init__(self, config_path: str):
-        self.files: Dict[str, VirtualFile] = {}
+        self.files: Dict[str, VirtualFile] = {}  #文件路径和文件对象的映射
         self.fd = 0
         self._load_config(config_path)
 
+    # 从配置文件加载文件系统结构，将配置文件中的文件信息加载到self.files字典中，key为文件路径，value为CommandFile对象
     def _load_config(self, config_path: str):
         """从配置文件加载文件系统结构"""
         try:
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
+            with open(config_path, 'r') as f: 
+                config = yaml.safe_load(f) #读取和解析配置文件 
 
             for file_path, file_config in config['files'].items():
                 if not file_path.startswith('/'):
@@ -165,8 +166,11 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
         """打开文件"""
         self.fd += 1
         return self.fd
-
+    def getxattr(self, path: str, name: str, position=0):
+        """获取扩展属性"""
+        return b'' # 返回空字节串，表示没有扩展属性
 def main():
+    # 检查命令行参数
     if len(sys.argv) != 3:
         print(f"Usage: {sys.argv[0]} <config_file> <mountpoint>")
         sys.exit(1)

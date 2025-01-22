@@ -19,3 +19,8 @@ files:
     write_cmd: "timedatectl set-timezone {value}"
     default_value: "Unknown"
   
+  system/hostname:
+    mode: 0666
+    read_cmd: "hostname"
+    write_cmd: "hostnamectl set-hostname {value}"
+    default_value: "Unknown"
