@@ -333,13 +333,13 @@ static int network_open(const char *path, struct fuse_file_info *fi)
 {
     char debug_msg[256];
     snprintf(debug_msg, sizeof(debug_msg), "open called with path: %s", path);
-    log_error(debug_msg);
+    log_error(debug_msg); 
 
     struct fs_entry *entry = find_fs_entry(path);
     if (entry && S_ISREG(entry->mode)) {
         return 0;
     }
-    return -ENOENT;
+    return -ENOENT;                                            
 }
 
 static struct fuse_operations network_oper = {
