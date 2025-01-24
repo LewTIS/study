@@ -327,7 +327,7 @@ static int network_truncate(const char *path, off_t size)
     }
     return -ENOENT;
 }
-
+ 
 // 打开文件
 static int network_open(const char *path, struct fuse_file_info *fi)
 {
