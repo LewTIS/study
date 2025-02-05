@@ -3,8 +3,8 @@
 import os
 import sys
 import errno
-import subprocess
-import yaml
+import subprocess 
+import yaml 
 from fuse import FUSE, FuseOSError, Operations
 from time import time
 import logging
@@ -18,6 +18,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(message)s'
 )
+
 
 class VirtualFile(ABC):
     """虚拟文件基类"""
@@ -35,6 +36,7 @@ class VirtualFile(ABC):
         """写入文件内容"""
         pass
 
+# 负责执行读取和写入文件
 class CommandFile(VirtualFile):
     """基于命令的配置文件"""
     def read(self) -> str:
@@ -55,8 +57,8 @@ class CommandFile(VirtualFile):
         try:
             if 'write_cmd' not in self.config:
                 return False
-            write_cmd = self.config['write_cmd'].format(value=data.strip()) #将data的内容写入文件
-            subprocess.check_call(write_cmd, shell=True)
+            write_cmd = self.config['write_cmd'].format(value=data.strip()) 
+            subprocess.check_call(write_cmd, shell=True) # 执行write_cmd命令，将data的内容写入文件
             return True
         except Exception as e:
             logging.error(f"Write failed: {str(e)}")
@@ -74,25 +76,26 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
         """从配置文件加载文件系统结构"""
         try:
             with open(config_path, 'r') as f: 
-                config = yaml.safe_load(f) #读取和解析配置文件 
+                config = yaml.safe_load(f) # 读取和解析配置文件 
 
             for file_path, file_config in config['files'].items():
                 if not file_path.startswith('/'):
                     file_path = '/' + file_path
-                self.files[file_path] = CommandFile(file_config)
+                self.files[file_path] = CommandFile(file_config) # 每个文件对应一个CommandFile对象，方便进行读取和写入
 
         except Exception as e:
             logging.error(f"Failed to load config: {str(e)}")
             sys.exit(1)
 
-    def _get_dirs(self) -> set:
-        """获取所有目录"""
+    def _get_dirs(self) -> set:  
+        """获取所有目录 {'/','/network','/service'}"""
+        # 辅助getattr方法，判断是否是目录
         dirs = {'/'}
         for path in self.files.keys():
-            parts = path.split('/')
+            parts = path.split('/') # 根据'/'将路径分割为多个部分
             for i in range(len(parts)):
                 if i > 0:
-                    dirs.add('/'.join(parts[:i]))
+                    dirs.add('/'.join(parts[:i])) # 将目录添加到dirs集合中
         return dirs
 
     def getattr(self, path: str, fh=None):
@@ -100,19 +103,21 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
         logging.debug(f"getattr: {path}")
         
         st = {
-            'st_atime': time(),
-            'st_mtime': time(),
-            'st_ctime': time(),
+            'st_atime': time(), 
+            'st_mtime': time(), 
+            'st_ctime': time(), 
             'st_uid': os.getuid(),
             'st_gid': os.getgid() 
         }
 
+        # 目录
         if path in self._get_dirs():
             st['st_mode'] = stat.S_IFDIR | 0o755
-            st['st_nlink'] = 2
+            st['st_nlink'] = 2  # 硬链接数，最少为2
             st['st_size'] = 4096
             return st
-
+       
+        # 文件
         if path in self.files:
             st['st_mode'] = stat.S_IFREG | self.files[path].mode
             st['st_nlink'] = 1
@@ -132,6 +137,7 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
         else: # 子目录下的目录和文件
             prefix = path + '/' # 给当前访问的目录加上'/'，如：/network/
             # 筛选以prefix开头的目录和文件，去掉prefix后，再以'/'分割，取第一个元素，得到子目录或文件名
+            # 如：/network/LAN -> LAN 
             entries.extend(set(
                 p[len(prefix):].split('/')[0]
                 for p in self.files.keys()
@@ -153,7 +159,7 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
         logging.debug(f"write: {path}")
         
         if path in self.files:
-            content = data.decode()
+            content = data.decode() # 将字节串转换为字符串
             if self.files[path].write(content):
                 return len(data)
         return 0
@@ -165,7 +171,7 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
     def open(self, path: str, flags):
         """打开文件"""
         self.fd += 1
-        return self.fd
+        return self.fd  # 返回文件描述符
     def getxattr(self, path: str, name: str, position=0):
         """获取扩展属性"""
         return b'' # 返回空字节串，表示没有扩展属性
@@ -175,7 +181,7 @@ def main():
         print(f"Usage: {sys.argv[0]} <config_file> <mountpoint>")
         sys.exit(1)
 
-    FUSE(ConfigFS(sys.argv[1]), sys.argv[2], foreground=False, allow_other=True)
+    FUSE(ConfigFS(sys.argv[1]), sys.argv[2], foreground=False, allow_other=True) # 创建FUSE文件系统实例，并挂载到指定的挂载点上
 
 if __name__ == '__main__':
     main()
