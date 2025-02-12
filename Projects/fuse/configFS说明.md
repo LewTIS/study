@@ -1,7 +1,12 @@
 ## FUSE 文件系统(ConfigFS)整体设计与实现
-
+### 需求
+**实现一个FUSE文件系统，其中包含以下功能：**
+- 1.包含`/network/LAN`,`/service/timezone`
+- 2.读写`/network/LAN`来获取/设定`enp0s3`的 IP address
+- 3.读写`/service/timezone`来获取/设定 TIMEZONE
+- 4.考虑扩展性
 ### 概述
-  `ConfigFS` 是一个基于FUSE的虚拟文件系统，用户可通过文件系统接口来读取和修改系统配置(如:IP,TIMEZONE等)。通过配置文件 `config.yaml` ,用户可以配置 `CongfigFS` 的目录结构，文件权限，文件读写等
+  `ConfigFS` 是一个基于FUSE的虚拟文件系统，用户可通过文件系统接口来读取和设定系统配置(如:IP,TIMEZONE等)。通过配置文件 `config.yaml` ,用户可以配置 `CongfigFS` 的目录结构，文件权限，文件读写等
 ### 关键组件
 1.配置文件（`config.yaml`）:
 - 定义文件系统目录结构
@@ -23,6 +28,14 @@
 
 
 ![alt text](fuse整体框架.png)
+
+| fuse path | mode | content |
+| --- | --- | --- |
+| /network/LAN | 0666 / R/W | 获取/设置enp0s3的IP地址 |
+| /service/timezone | 0666 / R/W | 获取/设置TIMEZONE |
+| /time/uptime | 0444/R | 获取系统自启动以来运行时间 |
+| /time/curtime  | 0444/R | 获取系统当前时间 |
+| /time/timezone | 0666 / R/W | 获取/设置系统当前时区 |
 
 ### 具体实现
 
@@ -253,7 +266,11 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
 5.写入文件内容（`write`）:
 - 当用户请求写入文件内容时，`write` 方法被调用
 - 调用 `CommandFile` 对象的 `write` 方法执行写入命令
-- 将用户提供的数据传递给写入命令，更新系统配置
+- 将用户提供的数据传递给写入命令，更新系统配置  
 
 ### 扩展性
+1. 通过配置文件添加新的文件和目录，以及相关文件操作逻辑，无需在原代码中修改，只需在配置文件中添加即可
+2. 抽象类设计：使用VirtualFile 抽象基类定义文件的读写接口，通过实现抽象基类的子类，实现具体的文件操作逻辑。后续若新增文件的读写方式改变，只需新增一个 VirtualFile 的子类即可
+
+
 

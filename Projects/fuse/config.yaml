@@ -18,6 +18,21 @@ files:
     read_cmd: "timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"
     write_cmd: "timedatectl set-timezone {value}"
     default_value: "Unknown"
+  time/uptime:
+    mode: 0444
+    read_cmd: "uptime -p"
+    default_value: "Unknown"
+  time/curtime:
+    mode: 0444
+    read_cmd: "date +'%Y-%m-%d %H:%M:%S'"
+    default_value: "Unknown"
+  time/timezone:
+    mode: 0666
+    read_cmd: "timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"
+    write_cmd: "timedatectl set-timezone {value}"
+    default_value: "Unknown"
+
+
   
   #system/hostname:
   #  mode: 0666

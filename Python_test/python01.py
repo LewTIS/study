@@ -261,7 +261,7 @@ else:
             print('success')  
 print(lisa.count)
 
-"""
+
 
 class Screen:
     @property
@@ -296,3 +296,31 @@ if s.resolution == 786432:
     print('success')
 else:
     print('failed')
+
+"""
+
+
+class Book:
+    prices = {"A":45.7,"B":56.7,"C":67.8,"D":78.9,"E":90.1}
+    shipping = 5
+    def __init__(self,book_name,book_num,free_ship):
+            self.book_name = book_name
+            self.num = book_num
+            self.free_ship = free_ship
+    
+    def totals(self):
+            price = Book.prices.get(self.book_name)
+            
+            t = price * self.num
+            """"
+            if t < self.free_ship:
+                    return t + Book.shipping
+            else:
+                    return t
+            """
+            return (t + Book.shipping) if t < self.free_ship else t
+
+if __name__ == '__main__':
+    book_a = Book('B',2,100)
+    a_total=book_a.totals()
+    print(a_total)           

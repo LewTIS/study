@@ -64,7 +64,7 @@ class CommandFile(VirtualFile):
             logging.error(f"Write failed: {str(e)}")
             return False
 
-class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
+class FSConfig(Operations):  #继承自Operations类，包含FUSE的基本接口
     """配置文件系统"""
     def __init__(self, config_path: str):
         self.files: Dict[str, VirtualFile] = {}  #文件路径和文件对象的映射
@@ -181,7 +181,7 @@ def main():
         print(f"Usage: {sys.argv[0]} <config_file> <mountpoint>")
         sys.exit(1)
 
-    FUSE(ConfigFS(sys.argv[1]), sys.argv[2], foreground=False, allow_other=True) # 创建FUSE文件系统实例，并挂载到指定的挂载点上
+    FUSE(FSConfig(sys.argv[1]), sys.argv[2], foreground=False, allow_other=True) # 创建FUSE文件系统实例，并挂载到指定的挂载点上
 
 if __name__ == '__main__':
     main()
