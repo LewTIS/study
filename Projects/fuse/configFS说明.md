@@ -27,8 +27,6 @@
 - 实现文件系统操作方法，如`getattr,readdir,read,write`等
 
 
-![alt text](fuse整体框架.png)
-
 | fuse path | mode | content |
 | --- | --- | --- |
 | /network/LAN | 0666 / R/W | 获取/设置enp0s3的IP地址 |
@@ -37,6 +35,17 @@
 | /time/curtime  | 0444/R | 获取系统当前时间 |
 | /time/timezone | 0666 / R/W | 获取/设置系统当前时区 |
 
+![alt text](目录结构.png)
+
+![alt text](整体架构.png)
+
+![alt text](congfig_CommandFile_VirtualFile关系.png)
+
+![alt text](文件路径对应CommandFile.png)
+
+![alt text](数据流图.png)
+
+![alt text](配置结构图.png)
 ### 具体实现
 
 1.配置文件（`config.yaml`）:

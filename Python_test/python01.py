@@ -3,6 +3,7 @@
 import math
 import time
 import random
+import datetime
 """
 print("hello,world")
 x = input("please input x:")
@@ -240,7 +241,7 @@ class Student():
         #self.increment_count()
         Student.count += 1
     
-    @classmethod
+    @classmethod 
     def increment_count(cls):
         cls.count +=1
         
@@ -297,7 +298,7 @@ if s.resolution == 786432:
 else:
     print('failed')
 
-"""
+
 
 
 class Book:
@@ -312,15 +313,90 @@ class Book:
             price = Book.prices.get(self.book_name)
             
             t = price * self.num
-            """"
-            if t < self.free_ship:
-                    return t + Book.shipping
-            else:
-                    return t
-            """
+            
+            #if t < self.free_ship:
+            #        return t + Book.shipping
+            #else:
+            #        return t
+            
             return (t + Book.shipping) if t < self.free_ship else t
 
 if __name__ == '__main__':
     book_a = Book('B',2,100)
     a_total=book_a.totals()
     print(a_total)           
+
+
+class Person:
+    def __init__(self,name,age):
+        self.name = name
+        self.age = age
+    
+    @classmethod
+    def by_birth(cls,name,birth_year):
+        this_year = datetime.date.today().year
+        age = this_year - birth_year
+        return cls(name,age)
+    def get_info(self):
+        return "{0}'s age is {1}".format(self.name,self.age)
+
+if __name__ == "__main__":
+    newton = Person('Newton',26)
+    print(newton.get_info())
+    hertz = Person.by_birth("Hertz",1857)
+    print(hertz.get_info())
+
+
+class Person:
+    def __init__(self,name,age):
+        self.name = name
+        self.age =  age
+    
+    def get_name(self):
+        return self.name
+    
+    def get_age(self):
+        return self.age
+
+class Student(Person):
+    def __init__(self,school,name,age):
+        self.school = school
+        super().__init__(name,age)
+    def grade(self,n):
+        print(f"{self.name}'s grade is {n}")
+
+if __name__ == "__main__":
+    #stu1 = Student("Galiao",27)
+    stu1 = Student("Social University","Galiao","24")
+    stu1.grade(99)
+    print(stu1.get_name())
+    print(stu1.get_age())
+
+class Cat:
+    def speak(self):
+        print("meow")
+
+class Dog:
+    def speak(self):
+        print("woof")
+
+class Bob:
+    def bow(self):
+        print("thank you")
+    def speak(self):
+        print("hello,welcome")
+    def drive(self):
+        print("beep")
+
+def command(pet):
+    pet.speak()
+pets = [ Cat(),Dog(),Bob()]
+
+for pet in pets:
+    command(pet)
+
+"""
+
+
+    
+
