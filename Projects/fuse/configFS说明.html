@@ -1,0 +1,360 @@
+<!DOCTYPE html><html><head>
+      <title>configFS说明</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+      
+      
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <!-- The content below will be included at the end of the <head> element. --><script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script></head><body for="html-export">
+    
+    
+      <div class="crossnote markdown-preview  ">
+      
+<h2 id="fuse-文件系统configfs整体设计与实现">FUSE 文件系统(ConfigFS)整体设计与实现 </h2>
+<h3 id="需求">需求 </h3>
+<p><strong>实现一个FUSE文件系统，其中包含以下功能：</strong></p>
+<ul>
+<li>1.包含<code>/network/LAN</code>,<code>/service/timezone</code></li>
+<li>2.读写<code>/network/LAN</code>来获取/设定<code>enp0s3</code>的 IP address</li>
+<li>3.读写<code>/service/timezone</code>来获取/设定 TIMEZONE</li>
+<li>4.考虑扩展性</li>
+</ul>
+<h3 id="概述">概述 </h3>
+<p><code>ConfigFS</code> 是一个基于FUSE的虚拟文件系统，用户可通过文件系统接口来读取和设定系统配置(如:IP,TIMEZONE等)。通过配置文件 <code>config.yaml</code> ,用户可以配置 <code>CongfigFS</code> 的目录结构，文件权限，文件读写等</p>
+<h3 id="关键组件">关键组件 </h3>
+<p>1.配置文件（<code>config.yaml</code>）:</p>
+<ul>
+<li>定义文件系统目录结构</li>
+<li>定义文件权限</li>
+<li>包含读取命令 <code>read_cmd</code> 和写入命令 <code>write_cmd</code></li>
+<li>包含自定义输出处理 <code>process_output</code>,用于处理读取结果</li>
+<li>包含默认值 <code>default_value</code> ，用于读取失败时返回默认值</li>
+<li>方便扩展</li>
+</ul>
+<p>2.虚拟文件类（<code>VirtualFile</code>）:</p>
+<ul>
+<li>抽象基类，定义了读取和写入文件的接口</li>
+<li>子类 <code>CommandFile</code> 继承自 <code>VirtualFile</code> ，实现了读取和写入文件的接口</li>
+<li>接收配置文件信息（ <code>config.yaml</code> 中每个文件对应的配置信息）</li>
+</ul>
+<p>3.文件系统类（<code>ConfigFS</code>）:</p>
+<ul>
+<li>继承自fuse.operations,包含FUSE文件系统的基本接口，如<code>getattr,readdir,read,write</code>等</li>
+<li>负责加载配置文件，并针对每个文件创建对应的虚拟文件对象(<code>CommandFile</code>)</li>
+<li>实现文件系统操作方法，如<code>getattr,readdir,read,write</code>等</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>fuse path</th>
+<th>mode</th>
+<th>content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/network/LAN</td>
+<td>0666 / R/W</td>
+<td>获取/设置enp0s3的IP地址</td>
+</tr>
+<tr>
+<td>/service/timezone</td>
+<td>0666 / R/W</td>
+<td>获取/设置TIMEZONE</td>
+</tr>
+<tr>
+<td>/time/uptime</td>
+<td>0444/R</td>
+<td>获取系统自启动以来运行时间</td>
+</tr>
+<tr>
+<td>/time/curtime</td>
+<td>0444/R</td>
+<td>获取系统当前时间</td>
+</tr>
+<tr>
+<td>/time/timezone</td>
+<td>0666 / R/W</td>
+<td>获取/设置系统当前时区</td>
+</tr>
+</tbody>
+</table>
+<p><img src="%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.png" alt="alt text"></p>
+<p><img src="%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84.png" alt="alt text"></p>
+<p><img src="congfig_CommandFile_VirtualFile%E5%85%B3%E7%B3%BB.png" alt="alt text"></p>
+<p><img src="%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84%E5%AF%B9%E5%BA%94CommandFile.png" alt="alt text"></p>
+<p><img src="%E6%95%B0%E6%8D%AE%E6%B5%81%E5%9B%BE.png" alt="alt text"></p>
+<p><img src="%E9%85%8D%E7%BD%AE%E7%BB%93%E6%9E%84%E5%9B%BE.png" alt="alt text"></p>
+<h3 id="具体实现">具体实现 </h3>
+<p>1.配置文件（<code>config.yaml</code>）:</p>
+<pre data-role="codeBlock" data-info="yaml" class="language-yaml yaml"><code><span class="token key atrule">files</span><span class="token punctuation">:</span>
+  <span class="token key atrule">network/LAN</span><span class="token punctuation">:</span>
+    <span class="token key atrule">mode</span><span class="token punctuation">:</span> <span class="token number">0666</span>
+    <span class="token key atrule">read_cmd</span><span class="token punctuation">:</span> <span class="token string">"nmcli -g IP4.ADDRESS device show enp0s3"</span>
+    <span class="token key atrule">write_cmd</span><span class="token punctuation">:</span> <span class="token punctuation">&gt;</span><span class="token scalar string">
+      nmcli device modify enp0s3
+      ipv4.method manual
+      ipv4.addresses "{value}/24"
+      ipv4.gateway "10.0.2.2"
+      ipv4.dns "10.180.8.13,10.180.8.12"</span>
+    <span class="token key atrule">process_output</span><span class="token punctuation">:</span> <span class="token punctuation">|</span> <span class="token comment"># 处理获取的ip地址，移除子网掩码部分 按照'/'分割字符串，取第一个元素</span>
+      <span class="token key atrule">if '/' in output</span><span class="token punctuation">:</span>
+          output = output.split('/')<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span>  
+    <span class="token key atrule">default_value</span><span class="token punctuation">:</span> <span class="token string">"0.0.0.0"</span>
+
+  <span class="token key atrule">service/timezone</span><span class="token punctuation">:</span>
+    <span class="token key atrule">mode</span><span class="token punctuation">:</span> <span class="token number">0666</span>
+    <span class="token key atrule">read_cmd</span><span class="token punctuation">:</span> <span class="token string">"timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"</span>
+    <span class="token key atrule">write_cmd</span><span class="token punctuation">:</span> <span class="token string">"timedatectl set-timezone {value}"</span>
+    <span class="token key atrule">default_value</span><span class="token punctuation">:</span> <span class="token string">"Unknown"</span>
+  <span class="token key atrule">time/uptime</span><span class="token punctuation">:</span>
+    <span class="token key atrule">mode</span><span class="token punctuation">:</span> <span class="token number">0444</span>
+    <span class="token key atrule">read_cmd</span><span class="token punctuation">:</span> <span class="token string">"uptime -p"</span>
+    <span class="token key atrule">default_value</span><span class="token punctuation">:</span> <span class="token string">"Unknown"</span>
+  <span class="token key atrule">time/curtime</span><span class="token punctuation">:</span>
+    <span class="token key atrule">mode</span><span class="token punctuation">:</span> <span class="token number">0444</span>
+    <span class="token key atrule">read_cmd</span><span class="token punctuation">:</span> <span class="token string">"date +'%Y-%m-%d %H:%M:%S'"</span>
+    <span class="token key atrule">default_value</span><span class="token punctuation">:</span> <span class="token string">"Unknown"</span>
+  <span class="token key atrule">time/timezone</span><span class="token punctuation">:</span>
+    <span class="token key atrule">mode</span><span class="token punctuation">:</span> <span class="token number">0666</span>
+    <span class="token key atrule">read_cmd</span><span class="token punctuation">:</span> <span class="token string">"timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"</span>
+    <span class="token key atrule">write_cmd</span><span class="token punctuation">:</span> <span class="token string">"timedatectl set-timezone {value}"</span>
+    <span class="token key atrule">default_value</span><span class="token punctuation">:</span> <span class="token string">"Unknown"</span>
+</code></pre><p>2.虚拟文件类（<code>VirtualFile</code>）:</p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-class">class</span> <span class="token class-name">VirtualFile</span><span class="token punctuation">(</span>ABC<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""虚拟文件基类"""</span>
+    <span class="token keyword keyword-def">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> config<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> Any<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span> <span class="token comment">#接收一个字典类型的参数</span>
+        self<span class="token punctuation">.</span>mode <span class="token operator">=</span> config<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'mode'</span><span class="token punctuation">,</span> <span class="token number">0o666</span><span class="token punctuation">)</span> 
+        self<span class="token punctuation">.</span>config <span class="token operator">=</span> config    
+
+    <span class="token decorator annotation punctuation">@abstractmethod</span>
+    <span class="token keyword keyword-def">def</span> <span class="token function">read</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""读取文件内容"""</span>
+        <span class="token keyword keyword-pass">pass</span>
+
+    <span class="token decorator annotation punctuation">@abstractmethod</span>
+    <span class="token keyword keyword-def">def</span> <span class="token function">write</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> data<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""写入文件内容"""</span>
+        <span class="token keyword keyword-pass">pass</span>
+
+</code></pre><p>3.命令文件类（<code>CommandFile</code>）:</p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-class">class</span> <span class="token class-name">CommandFile</span><span class="token punctuation">(</span>VirtualFile<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token triple-quoted-string string">"""基于命令的配置文件"""</span>
+    <span class="token keyword keyword-def">def</span> <span class="token function">read</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">str</span><span class="token punctuation">:</span>
+        <span class="token keyword keyword-try">try</span><span class="token punctuation">:</span>
+            read_cmd <span class="token operator">=</span> self<span class="token punctuation">.</span>config<span class="token punctuation">[</span><span class="token string">'read_cmd'</span><span class="token punctuation">]</span>
+            output <span class="token operator">=</span> subprocess<span class="token punctuation">.</span>check_output<span class="token punctuation">(</span>read_cmd<span class="token punctuation">,</span> shell<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span><span class="token punctuation">.</span>decode<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span>strip<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment">#执行read_cmd命令，获取输出内容</span>
+            <span class="token keyword keyword-if">if</span> self<span class="token punctuation">.</span>config<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'process_output'</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token comment"># 执行自定义的输出处理</span>
+                <span class="token builtin">locals</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">'output'</span><span class="token punctuation">:</span> output<span class="token punctuation">}</span>
+                <span class="token keyword keyword-exec">exec</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>config<span class="token punctuation">[</span><span class="token string">'process_output'</span><span class="token punctuation">]</span><span class="token punctuation">,</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token builtin">locals</span><span class="token punctuation">)</span> <span class="token comment">#执行自定义的输出处理，获取output变量'/'之前的内容</span>
+                output <span class="token operator">=</span> <span class="token builtin">locals</span><span class="token punctuation">[</span><span class="token string">'output'</span><span class="token punctuation">]</span>
+            <span class="token keyword keyword-return">return</span> output <span class="token operator">+</span> <span class="token string">'\n'</span>
+        <span class="token keyword keyword-except">except</span> Exception <span class="token keyword keyword-as">as</span> e<span class="token punctuation">:</span>
+            logging<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Read failed: </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">str</span><span class="token punctuation">(</span>e<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token keyword keyword-return">return</span> self<span class="token punctuation">.</span>config<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">'default_value'</span><span class="token punctuation">,</span> <span class="token string">'Error\n'</span><span class="token punctuation">)</span>
+
+    <span class="token keyword keyword-def">def</span> <span class="token function">write</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> data<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">bool</span><span class="token punctuation">:</span>
+        <span class="token keyword keyword-try">try</span><span class="token punctuation">:</span>
+            <span class="token keyword keyword-if">if</span> <span class="token string">'write_cmd'</span> <span class="token keyword keyword-not">not</span> <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>config<span class="token punctuation">:</span>
+                <span class="token keyword keyword-return">return</span> <span class="token boolean">False</span>
+            write_cmd <span class="token operator">=</span> self<span class="token punctuation">.</span>config<span class="token punctuation">[</span><span class="token string">'write_cmd'</span><span class="token punctuation">]</span><span class="token punctuation">.</span><span class="token builtin">format</span><span class="token punctuation">(</span>value<span class="token operator">=</span>data<span class="token punctuation">.</span>strip<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> 
+            subprocess<span class="token punctuation">.</span>check_call<span class="token punctuation">(</span>write_cmd<span class="token punctuation">,</span> shell<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span> <span class="token comment"># 执行write_cmd命令，将data的内容写入文件</span>
+            <span class="token keyword keyword-return">return</span> <span class="token boolean">True</span>
+        <span class="token keyword keyword-except">except</span> Exception <span class="token keyword keyword-as">as</span> e<span class="token punctuation">:</span>
+            logging<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Write failed: </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">str</span><span class="token punctuation">(</span>e<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            <span class="token keyword keyword-return">return</span> <span class="token boolean">False</span>
+
+</code></pre><p>4.文件系统类（<code>ConfigFS</code>）:</p>
+<ul>
+<li>配置文件系统</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-class">class</span> <span class="token class-name">ConfigFS</span><span class="token punctuation">(</span>Operations<span class="token punctuation">)</span><span class="token punctuation">:</span>  <span class="token comment">#继承自Operations类，包含FUSE的基本接口</span>
+    <span class="token keyword keyword-def">def</span> <span class="token function">__init__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> config_path<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        self<span class="token punctuation">.</span>files<span class="token punctuation">:</span> Dict<span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">,</span> VirtualFile<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>  <span class="token comment">#文件路径和文件对象的映射</span>
+        self<span class="token punctuation">.</span>fd <span class="token operator">=</span> <span class="token number">0</span>
+        self<span class="token punctuation">.</span>_load_config<span class="token punctuation">(</span>config_path<span class="token punctuation">)</span>
+</code></pre><ul>
+<li>从配置文件加载文件系统结构</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>    <span class="token comment"># 从配置文件加载文件系统结构，将配置文件中的文件信息加载到self.files字典中，key为文件路径，value为CommandFile对象</span>
+
+    <span class="token comment"># 从配置文件加载文件系统结构</span>
+    <span class="token keyword keyword-def">def</span> <span class="token function">_load_config</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> config_path<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+       
+        <span class="token keyword keyword-try">try</span><span class="token punctuation">:</span>
+            <span class="token keyword keyword-with">with</span> <span class="token builtin">open</span><span class="token punctuation">(</span>config_path<span class="token punctuation">,</span> <span class="token string">'r'</span><span class="token punctuation">)</span> <span class="token keyword keyword-as">as</span> f<span class="token punctuation">:</span> 
+                config <span class="token operator">=</span> yaml<span class="token punctuation">.</span>safe_load<span class="token punctuation">(</span>f<span class="token punctuation">)</span> <span class="token comment"># 读取和解析配置文件 </span>
+
+            <span class="token keyword keyword-for">for</span> file_path<span class="token punctuation">,</span> file_config <span class="token keyword keyword-in">in</span> config<span class="token punctuation">[</span><span class="token string">'files'</span><span class="token punctuation">]</span><span class="token punctuation">.</span>items<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword keyword-if">if</span> <span class="token keyword keyword-not">not</span> file_path<span class="token punctuation">.</span>startswith<span class="token punctuation">(</span><span class="token string">'/'</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                    file_path <span class="token operator">=</span> <span class="token string">'/'</span> <span class="token operator">+</span> file_path
+                self<span class="token punctuation">.</span>files<span class="token punctuation">[</span>file_path<span class="token punctuation">]</span> <span class="token operator">=</span> CommandFile<span class="token punctuation">(</span>file_config<span class="token punctuation">)</span> <span class="token comment"># 每个文件对应一个CommandFile对象，方便进行读取和写入</span>
+
+        <span class="token keyword keyword-except">except</span> Exception <span class="token keyword keyword-as">as</span> e<span class="token punctuation">:</span>
+            logging<span class="token punctuation">.</span>error<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"Failed to load config: </span><span class="token interpolation"><span class="token punctuation">{</span><span class="token builtin">str</span><span class="token punctuation">(</span>e<span class="token punctuation">)</span><span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+            sys<span class="token punctuation">.</span>exit<span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span>
+</code></pre><ul>
+<li>获取所有目录</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>    <span class="token keyword keyword-def">def</span> <span class="token function">_get_dirs</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">set</span><span class="token punctuation">:</span>  
+        <span class="token triple-quoted-string string">"""获取所有目录 {'/','/network','/service'}"""</span>
+        <span class="token comment"># 辅助getattr方法，判断是否是目录</span>
+        dirs <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token string">'/'</span><span class="token punctuation">}</span>
+        <span class="token keyword keyword-for">for</span> path <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>files<span class="token punctuation">.</span>keys<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            parts <span class="token operator">=</span> path<span class="token punctuation">.</span>split<span class="token punctuation">(</span><span class="token string">'/'</span><span class="token punctuation">)</span> <span class="token comment"># 根据'/'将路径分割为多个部分</span>
+            <span class="token keyword keyword-for">for</span> i <span class="token keyword keyword-in">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token builtin">len</span><span class="token punctuation">(</span>parts<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword keyword-if">if</span> i <span class="token operator">&gt;</span> <span class="token number">0</span><span class="token punctuation">:</span>
+                    dirs<span class="token punctuation">.</span>add<span class="token punctuation">(</span><span class="token string">'/'</span><span class="token punctuation">.</span>join<span class="token punctuation">(</span>parts<span class="token punctuation">[</span><span class="token punctuation">:</span>i<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 将目录添加到dirs集合中</span>
+        <span class="token keyword keyword-return">return</span> dirs
+</code></pre><ul>
+<li>获取文件属性</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>    <span class="token keyword keyword-def">def</span> <span class="token function">getattr</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> path<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> fh<span class="token operator">=</span><span class="token boolean">None</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""获取文件属性"""</span>
+        logging<span class="token punctuation">.</span>debug<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"getattr: </span><span class="token interpolation"><span class="token punctuation">{</span>path<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        
+        st <span class="token operator">=</span> <span class="token punctuation">{</span>
+            <span class="token string">'st_atime'</span><span class="token punctuation">:</span> time<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> 
+            <span class="token string">'st_mtime'</span><span class="token punctuation">:</span> time<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> 
+            <span class="token string">'st_ctime'</span><span class="token punctuation">:</span> time<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> 
+            <span class="token string">'st_uid'</span><span class="token punctuation">:</span> os<span class="token punctuation">.</span>getuid<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token string">'st_gid'</span><span class="token punctuation">:</span> os<span class="token punctuation">.</span>getgid<span class="token punctuation">(</span><span class="token punctuation">)</span> 
+        <span class="token punctuation">}</span>
+
+        <span class="token comment"># 目录</span>
+        <span class="token keyword keyword-if">if</span> path <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>_get_dirs<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            st<span class="token punctuation">[</span><span class="token string">'st_mode'</span><span class="token punctuation">]</span> <span class="token operator">=</span> stat<span class="token punctuation">.</span>S_IFDIR <span class="token operator">|</span> <span class="token number">0o755</span>
+            st<span class="token punctuation">[</span><span class="token string">'st_nlink'</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token number">2</span>  <span class="token comment"># 硬链接数，最少为2</span>
+            st<span class="token punctuation">[</span><span class="token string">'st_size'</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token number">4096</span>
+            <span class="token keyword keyword-return">return</span> st
+       
+        <span class="token comment"># 文件</span>
+        <span class="token keyword keyword-if">if</span> path <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>files<span class="token punctuation">:</span>
+            st<span class="token punctuation">[</span><span class="token string">'st_mode'</span><span class="token punctuation">]</span> <span class="token operator">=</span> stat<span class="token punctuation">.</span>S_IFREG <span class="token operator">|</span> self<span class="token punctuation">.</span>files<span class="token punctuation">[</span>path<span class="token punctuation">]</span><span class="token punctuation">.</span>mode
+            st<span class="token punctuation">[</span><span class="token string">'st_nlink'</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token number">1</span>
+            st<span class="token punctuation">[</span><span class="token string">'st_size'</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token builtin">len</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>files<span class="token punctuation">[</span>path<span class="token punctuation">]</span><span class="token punctuation">.</span>read<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>  <span class="token comment"># 获取文件内容的长度，调用CommandFile类的read方法</span>
+            <span class="token keyword keyword-return">return</span> st
+
+        <span class="token keyword keyword-raise">raise</span> FuseOSError<span class="token punctuation">(</span>errno<span class="token punctuation">.</span>ENOENT<span class="token punctuation">)</span>
+</code></pre><ul>
+<li>读取目录内容</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>    <span class="token keyword keyword-def">def</span> <span class="token function">readdir</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> path<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> fh<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">list</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""读取目录内容"""</span>
+        logging<span class="token punctuation">.</span>debug<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"readdir: </span><span class="token interpolation"><span class="token punctuation">{</span>path<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        
+        entries <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token string">'.'</span><span class="token punctuation">,</span> <span class="token string">'..'</span><span class="token punctuation">]</span>
+        <span class="token comment"># 根目录下的子目录</span>
+        <span class="token keyword keyword-if">if</span> path <span class="token operator">==</span> <span class="token string">'/'</span><span class="token punctuation">:</span>
+            entries<span class="token punctuation">.</span>extend<span class="token punctuation">(</span><span class="token builtin">set</span><span class="token punctuation">(</span>p<span class="token punctuation">.</span>split<span class="token punctuation">(</span><span class="token string">'/'</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span> <span class="token keyword keyword-for">for</span> p <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>files<span class="token punctuation">.</span>keys<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 只获取一级目录</span>
+        <span class="token keyword keyword-else">else</span><span class="token punctuation">:</span> <span class="token comment"># 子目录下的目录和文件</span>
+            prefix <span class="token operator">=</span> path <span class="token operator">+</span> <span class="token string">'/'</span> <span class="token comment"># 给当前访问的目录加上'/'，如：/network/</span>
+            <span class="token comment"># 筛选以prefix开头的目录和文件，去掉prefix后，再以'/'分割，取第一个元素，得到子目录或文件名</span>
+            <span class="token comment"># 如：/network/LAN -&gt; LAN </span>
+            entries<span class="token punctuation">.</span>extend<span class="token punctuation">(</span><span class="token builtin">set</span><span class="token punctuation">(</span>
+                p<span class="token punctuation">[</span><span class="token builtin">len</span><span class="token punctuation">(</span>prefix<span class="token punctuation">)</span><span class="token punctuation">:</span><span class="token punctuation">]</span><span class="token punctuation">.</span>split<span class="token punctuation">(</span><span class="token string">'/'</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span>
+                <span class="token keyword keyword-for">for</span> p <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>files<span class="token punctuation">.</span>keys<span class="token punctuation">(</span><span class="token punctuation">)</span>
+                <span class="token keyword keyword-if">if</span> p<span class="token punctuation">.</span>startswith<span class="token punctuation">(</span>prefix<span class="token punctuation">)</span>
+            <span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword keyword-return">return</span> entries
+</code></pre><ul>
+<li>读取文件内容</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>    <span class="token keyword keyword-def">def</span> <span class="token function">read</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> path<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> size<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> offset<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> fh<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">bytes</span><span class="token punctuation">:</span> <span class="token comment">#返回bytes类型，而不是str类型，FUSE接口要求</span>
+        <span class="token triple-quoted-string string">"""读取文件内容"""</span>
+        logging<span class="token punctuation">.</span>debug<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"read: </span><span class="token interpolation"><span class="token punctuation">{</span>path<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+        
+        <span class="token keyword keyword-if">if</span> path <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>files<span class="token punctuation">:</span>
+            content <span class="token operator">=</span> self<span class="token punctuation">.</span>files<span class="token punctuation">[</span>path<span class="token punctuation">]</span><span class="token punctuation">.</span>read<span class="token punctuation">(</span><span class="token punctuation">)</span>
+            <span class="token keyword keyword-return">return</span> content<span class="token punctuation">[</span>offset<span class="token punctuation">:</span>offset <span class="token operator">+</span> size<span class="token punctuation">]</span><span class="token punctuation">.</span>encode<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 将字符串转换为字节串</span>
+        <span class="token keyword keyword-return">return</span> <span class="token string">b''</span>
+</code></pre><ul>
+<li>写入文件内容</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>    <span class="token keyword keyword-def">def</span> <span class="token function">write</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> path<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> data<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> offset<span class="token punctuation">:</span> <span class="token builtin">int</span><span class="token punctuation">,</span> fh<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">int</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""写入文件内容"""</span>
+        logging<span class="token punctuation">.</span>debug<span class="token punctuation">(</span><span class="token string-interpolation"><span class="token string">f"write: </span><span class="token interpolation"><span class="token punctuation">{</span>path<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">)</span>
+       
+        <span class="token keyword keyword-if">if</span> path <span class="token keyword keyword-not">not</span> <span class="token keyword keyword-in">in</span> self<span class="token punctuation">.</span>files<span class="token punctuation">:</span>
+            <span class="token keyword keyword-raise">raise</span> FuseOSError<span class="token punctuation">(</span>errno<span class="token punctuation">.</span>ENOENT<span class="token punctuation">)</span>
+        
+        <span class="token keyword keyword-if">if</span> <span class="token keyword keyword-not">not</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>files<span class="token punctuation">[</span>path<span class="token punctuation">]</span><span class="token punctuation">.</span>mode <span class="token operator">&amp;</span> stat<span class="token punctuation">.</span>S_IWUSR<span class="token punctuation">)</span><span class="token punctuation">:</span> <span class="token comment"># 判断该文件，用户是否可写</span>
+            <span class="token keyword keyword-raise">raise</span> FuseOSError<span class="token punctuation">(</span>errno<span class="token punctuation">.</span>EACCES<span class="token punctuation">)</span>
+        
+        content <span class="token operator">=</span> data<span class="token punctuation">.</span>decode<span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token keyword keyword-if">if</span> self<span class="token punctuation">.</span>files<span class="token punctuation">[</span>path<span class="token punctuation">]</span><span class="token punctuation">.</span>write<span class="token punctuation">(</span>content<span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword keyword-return">return</span> <span class="token builtin">len</span><span class="token punctuation">(</span>data<span class="token punctuation">)</span>
+        
+        <span class="token keyword keyword-raise">raise</span> FuseOSError<span class="token punctuation">(</span>errno<span class="token punctuation">.</span>EIO<span class="token punctuation">)</span> <span class="token comment"># 写入失败</span>
+</code></pre><ul>
+<li>打开文件</li>
+</ul>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>    <span class="token keyword keyword-def">def</span> <span class="token function">open</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> path<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> flags<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token triple-quoted-string string">"""打开文件"""</span>
+        self<span class="token punctuation">.</span>fd <span class="token operator">+=</span> <span class="token number">1</span>
+        <span class="token keyword keyword-return">return</span> self<span class="token punctuation">.</span>fd  <span class="token comment"># 返回文件描述符</span>
+    
+</code></pre><h3 id="工作原理">工作原理 </h3>
+<p>1.加载配置文件：</p>
+<ul>
+<li><code>ConfigFS</code> 类在初始化时读取并解析 <code>config.yaml</code> 文件</li>
+<li>将配置文件中的每个文件路径映射到一个 <code>CommandFile</code> 对象，存储在 <code>self.files</code> 字典中</li>
+</ul>
+<p>2.获取文件属性（<code>getattr</code>）:</p>
+<ul>
+<li>当用户请求文件或目录的属性时，<code>getattr</code>方法被调用</li>
+<li>通过 <code>_get_dirs</code> 方法判断路径是否为目录</li>
+<li>若是目录，设置 <code>st_mode</code> 为 <code>S_IFDIR</code>, <code>st_nlink</code> 为2(.和..)，<code>st_size</code> 为 4096</li>
+<li>若是文件，设置 <code>st_mode</code> 为 <code>S_IFREG</code>, <code>st_nlink</code> 为1, <code>st_size</code> 为文件内容长度</li>
+</ul>
+<p>3.读取目录内容（<code>readdir</code>）:</p>
+<ul>
+<li>当用户请求目录内容时，<code>readdir</code> 方法被调用</li>
+<li>返回目录的条目列表，包含<code>.</code>和<code>..</code></li>
+<li>对于根目录<code>/</code>，返回所有一级子目录（这里的根目录是指挂载点）</li>
+<li>对于子目录，返回其下的子目录和文件</li>
+</ul>
+<p>4.读取文件内容（<code>read</code>）:</p>
+<ul>
+<li>当用户请求文件内容时，<code>read</code> 方法被调用</li>
+<li>调用 <code>CommandFile</code> 对象的 <code>read</code> 方法执行读取命令</li>
+<li>根据需要可对读取结果进行处理，再返回结果</li>
+</ul>
+<p>5.写入文件内容（<code>write</code>）:</p>
+<ul>
+<li>当用户请求写入文件内容时，<code>write</code> 方法被调用</li>
+<li>调用 <code>CommandFile</code> 对象的 <code>write</code> 方法执行写入命令</li>
+<li>将用户提供的数据传递给写入命令，更新系统配置</li>
+</ul>
+<h3 id="扩展性">扩展性 </h3>
+<ol>
+<li>通过配置文件添加新的文件和目录，以及相关文件操作逻辑，无需在原代码中修改，只需在配置文件中添加即可</li>
+<li>抽象类设计：使用VirtualFile 抽象基类定义文件的读写接口，通过实现抽象基类的子类，实现具体的文件操作逻辑。后续若新增文件的读写方式改变，只需新增一个 VirtualFile 的子类即可</li>
+</ol>
+
+      </div>
+      
+      
+    
+    
+    
+    
+    
+    
+  
+    </body></html>

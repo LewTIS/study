@@ -70,6 +70,19 @@ files:
     read_cmd: "timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"
     write_cmd: "timedatectl set-timezone {value}"
     default_value: "Unknown"
+  time/uptime:
+    mode: 0444
+    read_cmd: "uptime -p"
+    default_value: "Unknown"
+  time/curtime:
+    mode: 0444
+    read_cmd: "date +'%Y-%m-%d %H:%M:%S'"
+    default_value: "Unknown"
+  time/timezone:
+    mode: 0666
+    read_cmd: "timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"
+    write_cmd: "timedatectl set-timezone {value}"
+    default_value: "Unknown"
 ```
 2.虚拟文件类（`VirtualFile`）:
 ```python
@@ -235,12 +248,18 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
     def write(self, path: str, data: bytes, offset: int, fh) -> int:
         """写入文件内容"""
         logging.debug(f"write: {path}")
+       
+        if path not in self.files:
+            raise FuseOSError(errno.ENOENT)
         
-        if path in self.files:
-            content = data.decode() # 将字节串转换为字符串
-            if self.files[path].write(content):
-                return len(data)
-        return 0
+        if not(self.files[path].mode & stat.S_IWUSR): # 判断该文件，用户是否可写
+            raise FuseOSError(errno.EACCES)
+        
+        content = data.decode()
+        if self.files[path].write(content):
+            return len(data)
+        
+        raise FuseOSError(errno.EIO) # 写入失败
 ```
 - 打开文件
 ```python
