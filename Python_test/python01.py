@@ -395,8 +395,145 @@ pets = [ Cat(),Dog(),Bob()]
 for pet in pets:
     command(pet)
 
-"""
 
 
+class Book:
+    def __init__(self,name):
+        self.name = name
+        self.book = "mathematics for ML"
+    
+    def __getattr__(self,attr):
+        print("not exist!")
+    #def __setattr__(self,attr,value):
+        #super().__setattr__(attr,value)
+    def __setattr__(self,attr,value):
+        if attr == 'author':
+            super().__setattr__(attr,'laoqi')
+        else:
+            super().__setattr__(attr,value)
+    def __delattr__(self,attr):
+        if attr == 'book':
+            raise AttributeError("can't delete")
+        else:
+            super().__delattr__(attr)
+    
+        
+
+
+class Mylist(list):
+    def __getitem__(self,index):
+        if index == 0:
+            raise IndexError
+        if index > 0 :
+            index = index - 1
+            return list.__getitem__(self,index)
+    
+    def __setitem__(self,index,value):
+        if index == 0:
+            raise IndexError
+        if index > 0:
+            index = index - 1
+            list.__setitem__(self,index,value)
+
+if __name__ == "__main__":
+    lst = Mylist(['python','java','C++'])
+    print(lst)
+    lst.append('PHP')
+    print(f"lst[1] is {lst[1]}")
+    print(f"lst[4] is {lst[4]}")
+    lst[2] = 'R'
+    print(lst)
     
 
+
+class Simdict:
+    def __init__(self,k,v):
+        self.__dct = dict([(k,v),])
+    
+    def __setitem__(self,k,v):
+        self.__dct[k] = v
+    
+    def __getitem__(self,k):
+        return self.__dct[k]
+    
+    def __delitem__(self,k):
+        del self.__dct[k]
+
+    def __str__(self):
+        return f"{self.__dct}"
+    
+    __repr__ = __str__
+
+    def __len__(self):
+        return len(self.__dct)
+
+if __name__ == "__main__":
+    d = Simdict('name','laoqi')
+    print(d)
+    d['lang'] = 'python'
+    d['city'] = 'Siichow'
+    print(d['city'])
+    print(len(d))
+    print(d)
+    del d['city']
+    print(d)
+
+
+class Singleton:
+    _instance = None
+    def __new__(cls,*args,**kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+class MyBook(Singleton):
+    def __init__(self,name):
+        self.name = name
+
+if __name__ == "__main__":
+    b1 = MyBook("Python")
+    b2 = MyBook("math")
+    print(b1)
+    print(b2)
+    print("b1 is b2: ", b1 is b2)
+    print(f"b1.name = {b1.name}")
+    print(f"b2.name = {b2.name}")
+    print("b1.name is b2.name:", b1.name is b2.name)
+"""
+
+class MyRange:
+    def __init__(self,n):
+        self.i = 1
+        self.n = n
+
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        if self.i <= self.n:
+            i = self.i
+            self.i += 1
+            return i
+        else:
+            raise StopIteration()
+class Fibs:
+    def __init__(self,max):
+        self.max = max
+        self.a = 0
+        self.b =1
+    
+    def __inter__(self):
+        return self
+    
+    def __next__(self):
+        fib = self.a
+        if fib > self.max:
+            raise StopIteration
+        self.a , self.b = self.b,self.a + self.b
+        return fib
+
+if __name__ == "__main__":
+    fibs = Fibs(100000)
+    
+    lst = [fibs.__next__() for i in range(26)]
+    print(lst)
