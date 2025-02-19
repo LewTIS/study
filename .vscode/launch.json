@@ -24,6 +24,12 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}"
         }
     ]
 }

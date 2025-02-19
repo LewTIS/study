@@ -4,6 +4,7 @@ import math
 import time
 import random
 import datetime
+import sys
 """
 print("hello,world")
 x = input("please input x:")
@@ -499,7 +500,6 @@ if __name__ == "__main__":
     print(f"b1.name = {b1.name}")
     print(f"b2.name = {b2.name}")
     print("b1.name is b2.name:", b1.name is b2.name)
-"""
 
 class MyRange:
     def __init__(self,n):
@@ -537,3 +537,92 @@ if __name__ == "__main__":
     
     lst = [fibs.__next__() for i in range(26)]
     print(lst)
+    
+
+class Calculator:
+    is_raise = True
+    def calc(self,expression):
+        try:
+            return eval(expression)
+        except ZeroDivisionError as e:
+            print(e)
+            return "expression error"
+        except NameError as e:
+            print(e)
+            return "not exist"
+
+if __name__ == "__main__":
+    cal = Calculator()
+    result = cal.calc("7/0")
+    print(result)
+
+
+class MyCustomError(Exception):
+    def __init__(self,*args):
+        if args:
+            self.message = args[0]
+        else:
+            self.message = None
+    
+    def __str__(self):
+        print('calling str')
+        if self.message:
+            return 'MyCustomError, {0}'.format(self.message)
+        else:
+            return 'MyCustomError has been raise'
+"""
+# 自定义异常类 ：字典中的值只能是整数或浮点数，负责抛出异常
+
+class IntFloatValueError(Exception):
+    def __init__(self,value):
+        self.value = value
+
+    def __str__(self):
+        return f"{self.value} is invaild in put ,can only accept integers and floats as its value!"
+    
+
+class KeyValueContructError(Exception):
+    def __init__(self,key,value):
+        self.key = key
+        self.value = value
+    
+    def __str__(self):
+        return (f"""keys and values need to be passed as either list or tuple.
+                Key: {self.key} (type: {type(self.key)})
+                Value: {self.value} (type: {type(self.value)})"""
+            )
+
+
+class CustomIntFloatDict(dict):
+    empty_dic={}
+
+    def __init__(self,key=None,value=None):
+        if key is None or value is None:
+            self.get_dict()
+        elif not isinstance(key,(tuple,list,)) or \
+             not isinstance(value,(tuple,list)):
+            raise KeyValueContructError(key,value)
+        else:
+            zipped = zip(key,value)
+            for k,val in zipped:
+                if not isinstance(val,(int,float)):
+                    raise IntFloatValueError(val)
+                dict.__setitem__(self,k,val)
+    
+    def get_dict(self):
+        return self.empty_dic
+    
+    def __setitem__(self, key, value):
+        if not isinstance(value,(int,float)):
+            raise IntFloatValueError(value)
+        return dict.__setitem__(self,key,value)
+
+x = sys.argv[1]
+y = sys.argv[2]
+print(f"{x}+{y} = {float(x) + float(y)}")
+print(f"sys.argv = {sys.argv}")
+print(f"the file is {sys.argv[0]}")
+
+
+    
+    
