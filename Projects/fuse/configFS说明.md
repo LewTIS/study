@@ -301,5 +301,54 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
 2. 抽象类设计：使用VirtualFile 抽象基类定义文件的读写接口，通过实现抽象基类的子类，实现具体的文件操作逻辑。后续若新增文件的读写方式改变，只需新增一个 VirtualFile 的子类即可
 
 ## ntp node 实作记录
+### NTP/enable添加
  - 1. 当前系统没有安装ntp服务，且没有/etc/ntp.conf  ->安装ntp服务
+ - 2. 查看ntp service状态 -> systemctl status ntp 这个输出包含太多内容，需要额外筛选出 "active (running)"，较麻烦，这里使用systemctl is-active ntp 命令 可直接返回ntp的状态，即active或inactive
+ - 3. 这里获取ntp状态，用1代表enable，0代表disable，针对systemctl is-active ntp命令，返回值是active或inactive，需要额外用python代码对输出进行判断，返回对应1/0
+ - 4. 向 NTP/enable 写入 1/0 值 来启用/禁用 ntp 服务，通过命令 systemctl enable --now ntp/systemctl disable --now ntp，通过shell命令"if [ {value} -eq 1 ]; then systemctl enable --now ntp; else systemctl disable --now ntp; fi"来完成
+ ### NTP/server添加
+ - 1. 查看当前的ntp server，cat /etc/ntp.conf :
+    pool 0.ubuntu.pool.ntp.org iburst
+    pool 1.ubuntu.pool.ntp.org iburst
+    pool 2.ubuntu.pool.ntp.org iburst
+    pool 3.ubuntu.pool.ntp.org iburst
+    pool ntp.ubuntu.com
+    使用的 NTP 服务器池
+ - 2. 通过 ntpq -q 查看当前的ntp server
+         remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
+ 0.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+ 1.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+ 2.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+ 3.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+ ntp.ubuntu.com  .POOL.          16 p    -   64    0    0.000    0.000   0.000
+-ntp7.flashdance 194.58.202.20    2 u  309  512  377  251.975   -6.920  54.668
+*119.28.183.184  100.122.36.196   2 u  371  512  377   38.525   -0.169  41.118
++ntp6.flashdance 194.58.202.148   2 u  309  512  377  255.771   18.579  48.584
++stratum2-1.ntp. 130.173.91.58    2 u  419  512  317  117.294   -1.676  38.477
+-ntp1.flashdance 194.58.202.20    2 u  207  512  377  250.882   88.388  98.975
+    '*'表示当前使用的ntp server，'+'表示备选的ntp server '-'表示禁用的ntp server
 
+
+
+### 问题 
+ - 1. 当ntp 服务关闭是，read /NTP/enable 返回0,但是没有回车，在代码中针对输出都加了\n，后续查看日志发现，"2025-02-20 09:19:23,762 - read: /NTP/enable
+2025-02-20 09:19:23,766 - Read failed: Command 'systemctl is-active ntp' returned non-zero exit status 3." 表示命令返回非0状态码3，read命令执行失败，3代表表示inactive，这里其实返回的是default 值，即0，不是代表当前ntp状态的0
+    **原因：** 使用了 subprocess.check_output，它会在命令返回非零退出状态时抛出 CalledProcessError 异常，程序会捕获该异常，并返回默认值。
+    **解决：** 使用subprocess.run()代替subprocess.check_output(), 避免命令返回非零退出状态时 抛出异常，进入异常处理逻辑，并返回默认值。
+- 2. 向 NTP/enable 写入 1/0 值 来启用/禁用 ntp 服务，通过命令 systemctl enable --now ntp/systemctl disable --now ntp,该命令需要root权限，在启动和挂载fuse时，需要sudo，但是报错
+    sudo python3 config_fs1.py config.yaml ~/config_fs
+    " Traceback (most recent call last):
+  File "config_fs1.py", line 16, in <module>
+    logging.basicConfig(
+  File "/usr/lib/python3.8/logging/__init__.py", line 1988, in basicConfig
+    h = FileHandler(filename, mode)
+  File "/usr/lib/python3.8/logging/__init__.py", line 1147, in __init__
+    StreamHandler.__init__(self, self._open())
+  File "/usr/lib/python3.8/logging/__init__.py", line 1176, in _open
+    return open(self.baseFilename, self.mode, encoding=self.encoding)
+PermissionError: [Errno 13] Permission denied: '/tmp/config_fs.log' "
+**分析：**  /tmp/config_fs.log 权限为777,按理说root可以写入，实际测试也可写入，但是以sudo 执行启动fuse时，报错没有权限
+**解决：** 
+        1.以root用户创建/tmp/config_fs.log 并以sudo 权限启动fuse
+        2. 将日志文件路径改为/var/log/config_fs.log，并修改文件权限为666，以sudo 权限启动fuse

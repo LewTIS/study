@@ -31,6 +31,16 @@ files:
     read_cmd: "timedatectl | grep 'Time zone' | awk -F': ' '{print $2}'"
     write_cmd: "timedatectl set-timezone {value}"
     default_value: "Unknown"
+  NTP/enable:
+    mode: 0666
+    read_cmd: "systemctl is-active ntp"
+    write_cmd: "if [ {value} -eq 1 ]; then systemctl enable --now ntp; else systemctl disable --now ntp; fi"
+    process_output: |
+      if output.strip() == "active":
+          output = '1' 
+      else:
+          output = '0'
+    default_value: '0'
 
 
   

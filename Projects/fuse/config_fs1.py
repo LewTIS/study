@@ -14,7 +14,8 @@ import stat
 
 # 配置日志
 logging.basicConfig(
-    filename='/tmp/config_fs.log',
+    #filename='/tmp/config_fs.log',
+    filename ='/var/log/config_fs.log',
     level=logging.DEBUG,
     format='%(asctime)s - %(message)s'
 )
@@ -42,7 +43,8 @@ class CommandFile(VirtualFile):
     def read(self) -> str:
         try:
             read_cmd = self.config['read_cmd']
-            output = subprocess.check_output(read_cmd, shell=True).decode().strip() #执行read_cmd命令，获取输出内容
+            result = subprocess.run(read_cmd, shell=True, capture_output=True, text=True) #执行read_cmd命令
+            output = result.stdout.strip() #获取输出内容
             if self.config.get('process_output'):
                 # 执行自定义的输出处理
                 locals = {'output': output}
