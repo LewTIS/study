@@ -41,7 +41,21 @@ files:
       else:
           output = '0'
     default_value: '0'
-
+  NTP/server:
+    mode: 0666
+    read_cmd: "grep '^server' /etc/ntp.conf | awk '{print $2}'"
+    write_cmd: |
+      #1. stop ntp server
+      systemctl stop ntp
+      #2. remove existing server
+      sed -i '/^server/d' /etc/ntp.conf
+      #3. add new ntp server
+      for server in $(echo {value} | tr ' ' '\n'); do
+        echo "server $server iburst" >> /etc/ntp.conf
+      done
+      #4. start ntp server
+      systemctl restart ntp
+    default_value: "ntp1.aliyun.com ntp2.aliyun.com" 
 
   
   #system/hostname:

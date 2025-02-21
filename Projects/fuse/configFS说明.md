@@ -327,7 +327,7 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
 +ntp6.flashdance 194.58.202.148   2 u  309  512  377  255.771   18.579  48.584
 +stratum2-1.ntp. 130.173.91.58    2 u  419  512  317  117.294   -1.676  38.477
 -ntp1.flashdance 194.58.202.20    2 u  207  512  377  250.882   88.388  98.975
-    '*'表示当前使用的ntp server，'+'表示备选的ntp server '-'表示禁用的ntp server
+    '*'表示当前使用的ntp server，'+'表示备选的ntp server '-'表示禁用的ntp server 
 
 
 
