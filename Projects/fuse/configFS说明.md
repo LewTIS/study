@@ -301,38 +301,100 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
 2. 抽象类设计：使用VirtualFile 抽象基类定义文件的读写接口，通过实现抽象基类的子类，实现具体的文件操作逻辑。后续若新增文件的读写方式改变，只需新增一个 VirtualFile 的子类即可
 
 ## ntp node 实作记录
-### NTP/enable添加
- - 1. 当前系统没有安装ntp服务，且没有/etc/ntp.conf  ->安装ntp服务
- - 2. 查看ntp service状态 -> systemctl status ntp 这个输出包含太多内容，需要额外筛选出 "active (running)"，较麻烦，这里使用systemctl is-active ntp 命令 可直接返回ntp的状态，即active或inactive
- - 3. 这里获取ntp状态，用1代表enable，0代表disable，针对systemctl is-active ntp命令，返回值是active或inactive，需要额外用python代码对输出进行判断，返回对应1/0
- - 4. 向 NTP/enable 写入 1/0 值 来启用/禁用 ntp 服务，通过命令 systemctl enable --now ntp/systemctl disable --now ntp，通过shell命令"if [ {value} -eq 1 ]; then systemctl enable --now ntp; else systemctl disable --now ntp; fi"来完成
- ### NTP/server添加
- - 1. 查看当前的ntp server，cat /etc/ntp.conf :
-    pool 0.ubuntu.pool.ntp.org iburst
-    pool 1.ubuntu.pool.ntp.org iburst
-    pool 2.ubuntu.pool.ntp.org iburst
-    pool 3.ubuntu.pool.ntp.org iburst
-    pool ntp.ubuntu.com
-    使用的 NTP 服务器池
- - 2. 通过 ntpq -q 查看当前的ntp server
-         remote           refid      st t when poll reach   delay   offset  jitter
-==============================================================================
- 0.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
- 1.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
- 2.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
- 3.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
- ntp.ubuntu.com  .POOL.          16 p    -   64    0    0.000    0.000   0.000
--ntp7.flashdance 194.58.202.20    2 u  309  512  377  251.975   -6.920  54.668
-*119.28.183.184  100.122.36.196   2 u  371  512  377   38.525   -0.169  41.118
-+ntp6.flashdance 194.58.202.148   2 u  309  512  377  255.771   18.579  48.584
-+stratum2-1.ntp. 130.173.91.58    2 u  419  512  317  117.294   -1.676  38.477
--ntp1.flashdance 194.58.202.20    2 u  207  512  377  250.882   88.388  98.975
-    '*'表示当前使用的ntp server，'+'表示备选的ntp server '-'表示禁用的ntp server 
+### NTP/enable 添加
+ - 1. 当前系统没有安装ntp服务，且没有/etc/ntp.conf  -> 安装ntp服务
+ `sudo apt install ntp`
+ - 2. 查看ntp service状态 -> `systemctl status ntp` 这个输出包含太多内容，需要额外筛选出 "active (running)"，较麻烦，这里使用`systemctl is-active ntp` 命令 可直接返回ntp的状态，即`active`或`inactive`
 
+        
+ - 3. 这里获取ntp状态，用 "1" 代表 `enable`，"0" 代表`disable`，针对`systemctl is-active ntp`命令，返回值是active或inactive，需要额外用python代码对输出进行判断，返回对应 1/0
+
+        **process_output:**
+        ```python
+        if output.strip() == "active":
+            output = '1' 
+        else:
+            output = '0'
+        ```
+
+ - 4. 向 NTP/enable 写入 1/0 值 来启用/禁用 ntp 服务，通过命令 systemctl enable --now ntp / systemctl disable --now ntp ：启用/禁用(开机自启动/不启动)并立即启动/停止 NTP 服务
+        | number | meaning |
+        | --- | --- |
+        | 0 | disable |
+        | 1 | enable |
+
+        **write_cmd:**
+        ```shell
+        if [ {value} -eq 1 ]; then 
+            systemctl enable --now ntp; 
+        else 
+            systemctl disable --now ntp; 
+        fi
+        ```
+
+        
+
+**NTP/enable 完整配置:**
+ ```yaml
+ NTP/enable:
+    mode: 0666
+    read_cmd: "systemctl is-active ntp"
+    write_cmd: "if [ {value} -eq 1 ]; then systemctl enable --now ntp; else systemctl disable --now ntp; fi"
+    process_output: |
+      if output.strip() == "active":
+          output = '1' 
+      else:
+          output = '0'
+    default_value: '0'
+ ```
+ ### NTP/server添加
+ - 1. 查看当前的NTP Server， 在 /etc/ntp.conf :
+    ```
+    server ntp1.aliyun.com iburst
+    server ntp2.aliyun.com iburst
+    server ntp.ntsc.ac.cn iburst 
+    ````
+ - 2. 通过 ntpq -q 查看当前的ntp server，以及时间同步的状态
+
+| remote | refid  | st | t | when | poll | reach | delay | offset | jitter |
+| ---|---| ---| ---| ---| ---| ---| ---| ---| ---|
+|*116.62.13.223 | 100.100.61.92 | 2 | u | 88 | 128 | 377 | 12.740 | -0.124 | 4.075
+|+203.107.6.88  | 100.107.25.114 | 2 | u | 17 | 128 | 377 | 26.963 | 0.317 | 5.760
+|+114.118.7.163 | 123.139.33.3   | 2 | u | 96 | 64 | 166 | 32.228 | -3.136 | 19.759
+
+| 字段 | 说明 | 示例值解析 |
+| --- | --- |---|
+| remote | NTP Server 的地址 | *116.62.13.223 表示当前使用的ntp server ，+203.107.6.88 表示备选的ntp server，-114.118.7.163 表示禁用的ntp server |
+| refid | 上一级时间源(NTP Server)标识 | 100.100.61.92 是 当前NTP Server 参考源，即从 100.100.61.92 获取同步信息 |
+| st | 时间源层级 | 2 表示是第二次级服务器，每增加一层，时间精度递减 |
+| when | 距离上次成功同步的时间 | 88 秒前完成最后一次同步 |
+| poll | 本地系统向服务器发送的查询间隔 | 128 秒与服务器同步一次 |
+| reach | 与ntp server 最近8次连接状态 用八进制表示 | 377即11111111 表示最近八次均连接成功 |
+| delay | 网络延迟 | 12.74ms 数据包往返时间|
+| offset | 本地时间相对 NTP Server 的偏差 | -0.124 本地时间比服务器慢0.124ms |
+| jitter | 时间偏差波动值 | 4.075ms 表示时间偏差的波动程度 |
+
+#### read：
+- 1. 在 /etc/ntp.conf 中 ntp server 的格式为：``pool 0.ubuntu.pool.ntp.org iburst / server ntp1.aliyun.com iburst``
+- 2. 通过 ``grep + awk``，grep 筛选出 pool/server 开头的 ntp server，awk 打印所筛选行的第二个字段，即 ntp server 地址
+
+        ``read_cmd: "grep '^server' /etc/ntp.conf | awk '{print $2}'"``
+#### write: 
+
+- 1.格式：输入的NTP Server地址可以是多个，以空格分隔，如：ntp1.aliyun.com ntp2.aliyun.com，ntp3.aliyun.com
+- 2.首先，禁用 NTP 服务，通过 systemctl stop ntp 命令
+- 3.删除 /etc/ntp.conf 中的NTP server的地址
+    - a.大体框架上write这里通过命令的形式完成，可完成删除 /etc/ntp.conf 中的NTP server的有sed 、awk、grep等，但是grep和awk都要借助临时文件，先将除 NTP Server地址之外的内容写入到临时文件，再将临时文件内容写入到 /etc/ntp.conf
+    - b.sed支持直接在原始文件上修改，所有这里选择sed
+- 4.将用户输入的NTP Server地址写入到 /etc/ntp.conf 
+    - a.输入的NTP Server形式如：ntp1.aliyun.com ntp2.aliyun.com，ntp3.aliyun
+    - b.通过for 循环，用echo指令将每个NTP Server地址按照格式写入到 /etc/ntp.conf
+    - c.写入格式：server ntp1.aliyun.com iburst
+- 5.启用 NTP 服务，通过 systemctl restart ntp
 
 
 ### 问题 
- - 1. 当ntp 服务关闭是，read /NTP/enable 返回0,但是没有回车，在代码中针对输出都加了\n，后续查看日志发现，"2025-02-20 09:19:23,762 - read: /NTP/enable
+ - 1. 当ntp 服务关闭，read /NTP/enable 返回0,但是没有回车，在代码中针对输出都加了\n，后续查看日志发现，"2025-02-20 09:19:23,762 - read: /NTP/enable
 2025-02-20 09:19:23,766 - Read failed: Command 'systemctl is-active ntp' returned non-zero exit status 3." 表示命令返回非0状态码3，read命令执行失败，3代表表示inactive，这里其实返回的是default 值，即0，不是代表当前ntp状态的0
     **原因：** 使用了 subprocess.check_output，它会在命令返回非零退出状态时抛出 CalledProcessError 异常，程序会捕获该异常，并返回默认值。
     **解决：** 使用subprocess.run()代替subprocess.check_output(), 避免命令返回非零退出状态时 抛出异常，进入异常处理逻辑，并返回默认值。
@@ -352,3 +414,55 @@ PermissionError: [Errno 13] Permission denied: '/tmp/config_fs.log' "
 **解决：** 
         1.以root用户创建/tmp/config_fs.log 并以sudo 权限启动fuse
         2. 将日志文件路径改为/var/log/config_fs.log，并修改文件权限为666，以sudo 权限启动fuse
+- 3. 向 NTP/server 写入时，有许多问题：
+    - 1. 输入的ntp server之间没有按照格式输入，中间没有空格分隔
+    - 2. 输入的ntp server是无效的
+    - 3. 输入发生问题后，会导致原始的ntp配置文件被修改，系统时间同步异常
+        通过systemctl status ntp查看ntp 服务是运行的
+        - ntpq -p :返回No association ID's returned，NTP 服务运行但未成功同步。
+        - timedatectl status:System clock synchronized: no  系统时钟未与外部时间源（如 NTP 服务器）同步
+
+### NTP 测试
+#### 1.NTP/enable 
+##### 1.基本功能测试
+1.1 获取 NTP 服务状态
+    读取 config_fs/NTP/enable  
+    预期结果："1" 启用，"0" 禁用
+
+1.2 启用 NTP 服务
+    步骤：echo "1" > config_fs/NTP/enable
+          通过systemctl is-active ntp查看ntp服务状态
+    
+1.3 禁用 NTP 服务
+    步骤： echo "0" > config_fs /NTP/enable
+          通过systemctl is-active ntp查看ntp服务状态
+
+##### 2.输入错误值测试
+    若输入非'0'的值，会禁用NTP服务，只有当输入为"1"时，才启用NTP服务
+#### 2.NTP/server
+##### 1.基本功能测试
+1.1 获取当前 NTP Server
+    步骤：cat config_fs/NTP/server
+    
+1.2 写入单个 NTP Server
+    步骤： echo "ntp1.aliyun.com" > config_fs/NTP/server
+    验证：1.查看配置文件 /etc/ntp.conf 是否更新成功
+          2.查看ntp 服务状态
+          3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
+          4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
+
+1.3 写入多个 NTP Server
+    步骤： echo "ntp1.tencent.com ntp2.tencent.com ntp.ntsc.ac.cn" > config_fs/NTP/server
+    验证：1.查看配置文件 /etc/ntp.conf 是否更新成功
+          2.查看ntp 服务状态
+          3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
+          4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
+
+##### 2.异常情况测试
+1.1 输入无效的 NTP Server
+
+1.2 输入多个 NTP Server，但格式错误，使用其他符号间隔
+
+
+
+

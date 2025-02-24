@@ -50,7 +50,7 @@ files:
       #2. remove existing server
       sed -i '/^server/d' /etc/ntp.conf
       #3. add new ntp server
-      for server in $(echo {value} | tr ' ' '\n'); do
+      for server in $(echo {value}); do
         echo "server $server iburst" >> /etc/ntp.conf
       done
       #4. start ntp server

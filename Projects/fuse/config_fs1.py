@@ -60,7 +60,8 @@ class CommandFile(VirtualFile):
             if 'write_cmd' not in self.config:
                 return False
             write_cmd = self.config['write_cmd'].format(value=data.strip()) 
-            subprocess.check_call(write_cmd, shell=True) # 执行write_cmd命令，将data的内容写入文件
+            result = subprocess.run(write_cmd,shell=True,check=True)
+            #subprocess.check_call(write_cmd, shell=True) # 执行write_cmd命令，将data的内容写入文件
             return True
         except Exception as e:
             logging.error(f"Write failed: {str(e)}")
