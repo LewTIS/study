@@ -300,6 +300,8 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
 1. 通过配置文件添加新的文件和目录，以及相关文件操作逻辑，无需在原代码中修改，只需在配置文件中添加即可
 2. 抽象类设计：使用VirtualFile 抽象基类定义文件的读写接口，通过实现抽象基类的子类，实现具体的文件操作逻辑。后续若新增文件的读写方式改变，只需新增一个 VirtualFile 的子类即可
 
+
+## 整体框架
 ## ntp node 实作记录
 ### NTP/enable 添加
  - 1. 当前系统没有安装ntp服务，且没有/etc/ntp.conf  -> 安装ntp服务
@@ -379,90 +381,272 @@ class ConfigFS(Operations):  #继承自Operations类，包含FUSE的基本接口
 - 2. 通过 ``grep + awk``，grep 筛选出 pool/server 开头的 ntp server，awk 打印所筛选行的第二个字段，即 ntp server 地址
 
         ``read_cmd: "grep '^server' /etc/ntp.conf | awk '{print $2}'"``
-#### write: 
+#### write:  
 
-- 1.格式：输入的NTP Server地址可以是多个，以空格分隔，如：ntp1.aliyun.com ntp2.aliyun.com，ntp3.aliyun.com
-- 2.首先，禁用 NTP 服务，通过 systemctl stop ntp 命令
-- 3.删除 /etc/ntp.conf 中的NTP server的地址
-    - a.大体框架上write这里通过命令的形式完成，可完成删除 /etc/ntp.conf 中的NTP server的有sed 、awk、grep等，但是grep和awk都要借助临时文件，先将除 NTP Server地址之外的内容写入到临时文件，再将临时文件内容写入到 /etc/ntp.conf
-    - b.sed支持直接在原始文件上修改，所有这里选择sed
-- 4.将用户输入的NTP Server地址写入到 /etc/ntp.conf 
-    - a.输入的NTP Server形式如：ntp1.aliyun.com ntp2.aliyun.com，ntp3.aliyun
-    - b.通过for 循环，用echo指令将每个NTP Server地址按照格式写入到 /etc/ntp.conf
+- 1. 格式：输入的NTP Server地址可以是多个，以空格分隔，如："ntp1.aliyun.com ntp2.aliyun.com ntp3.aliyun.com"
+- 2. 首先，禁用 NTP 服务，通过 systemctl stop ntp 命令
+    ``systemctl stop ntp``
+- 3. 删除 /etc/ntp.conf 中的NTP Server的地址
+    - a. 大体框架上 write 这里通过命令的形式完成，可完成删除 /etc/ntp.conf 中的 NTP Server 的有 sed 、awk、grep 等，但是 grep 和 awk 都要借助临时文件，先将除 NTP Server 地址之外的内容写入到临时文件，再将临时文件内容写入到 /etc/ntp.conf
+    - b. sed支持直接在原始文件上修改，所有这里选择sed
+        ``sed -i '/^server/d' /etc/ntp.conf``
+- 4. 将用户输入的NTP Server地址写入到 /etc/ntp.conf 
+    - a.输入的NTP Server形式如："ntp1.aliyun.com ntp2.aliyun.com，ntp3.aliyun.com"
+    - b.通过 shell 脚本 for 循环，用echo指令将每个NTP Server地址按照格式写入到 /etc/ntp.conf
     - c.写入格式：server ntp1.aliyun.com iburst
-- 5.启用 NTP 服务，通过 systemctl restart ntp
+    ```shell
+    for server in $(echo {value}); do
+        echo "server $server iburst" >> /etc/ntp.conf
+    done
+- 5. 启用 NTP 服务，通过 systemctl restart ntp
 
+**NTP/service 完整配置:**
+```yaml
+NTP/server:
+    mode: 0666
+    read_cmd: "grep '^server' /etc/ntp.conf | awk '{print $2}'"
+    write_cmd: |
+      #1. stop ntp server
+      systemctl stop ntp
+      #2. remove existing server
+      sed -i '/^server/d' /etc/ntp.conf
+      #3. add new ntp server
+      for server in $(echo {value}); do
+        echo "server $server iburst" >> /etc/ntp.conf
+      done
+      #4. start ntp server
+      systemctl restart ntp
+    default_value: "ntp1.aliyun.com ntp2.aliyun.com" 
+```
 
 ### 问题 
- - 1. 当ntp 服务关闭，read /NTP/enable 返回0,但是没有回车，在代码中针对输出都加了\n，后续查看日志发现，"2025-02-20 09:19:23,762 - read: /NTP/enable
-2025-02-20 09:19:23,766 - Read failed: Command 'systemctl is-active ntp' returned non-zero exit status 3." 表示命令返回非0状态码3，read命令执行失败，3代表表示inactive，这里其实返回的是default 值，即0，不是代表当前ntp状态的0
-    **原因：** 使用了 subprocess.check_output，它会在命令返回非零退出状态时抛出 CalledProcessError 异常，程序会捕获该异常，并返回默认值。
-    **解决：** 使用subprocess.run()代替subprocess.check_output(), 避免命令返回非零退出状态时 抛出异常，进入异常处理逻辑，并返回默认值。
-- 2. 向 NTP/enable 写入 1/0 值 来启用/禁用 ntp 服务，通过命令 systemctl enable --now ntp/systemctl disable --now ntp,该命令需要root权限，在启动和挂载fuse时，需要sudo，但是报错
-    sudo python3 config_fs1.py config.yaml ~/config_fs
+ #### 1. 当 ntp service 关闭时，read config_fs/NTP/enable 返回0,但是没有回车，在代码中针对输出都加了 \n ，后续查看日志发现:
+```
+ linux@linux-VirtualBox:~/config_fs/NTP$ cat enable 
+ 0linux@linux-VirtualBox:~/config_fs/NTP$ 
+```
+ ```python
+2025-02-20 15:19:23,762 - read: /NTP/enable
+2025-02-20 15:19:23,766 - Read failed: Command 'systemctl is-active ntp' returned non-zero exit status 3.
+```
+
+  **分析：**  read 执行失败, 'systemctl is-active ntp' 命令返回非 0 状态码 3，3 代表 此时NTP Service inactive，这里其实返回的是 default_value，即 0(不含有 \n )，不是代表当前 ntp 状态的 0
+
+  **原因：** 使用了 subprocess.check_output，它会在命令返回非零退出状态时抛出 CalledProcessError 异常，程序会捕获该异常，并返回默认值。
+  **解决：** 使用 subprocess.run() 代替 subprocess.check_output(), 避免命令返回非零退出状态时抛出异常，进入异常处理逻辑，并返回默认值。
+  ```python
+  def read(self) -> str:
+        try:
+            read_cmd = self.config['read_cmd']
+            output = subprocess.check_output(read_cmd, shell=True).decode().strip() #执行read_cmd命令，获取输出内容
+            if self.config.get('process_output'):
+                # 执行自定义的输出处理
+                locals = {'output': output}
+                exec(self.config['process_output'], {}, locals) #执行自定义的输出处理，获取output变量'/'之前的内容
+                output = locals['output']
+            return output + '\n'
+        except Exception as e:
+            logging.error(f"Read failed: {str(e)}")
+            return self.config.get('default_value', 'Error\n')
+```
+    
+#### 2. 向 NTP/enable 写入 1/0 值 来启用/禁用 ntp 服务，通过命令 systemctl enable --now ntp/systemctl disable --now ntp,该命令需要root权限，在启动和挂载 fuse 时，需要sudo，但是在启动fuse时会报错：
+```
+    linux@linux-VirtualBox:~/share/CODE/Projects/fuse$:sudo python3 config_fs1.py config.yaml ~/config_fs
     " Traceback (most recent call last):
-  File "config_fs1.py", line 16, in <module>
+    File "config_fs1.py", line 16, in <module>
     logging.basicConfig(
-  File "/usr/lib/python3.8/logging/__init__.py", line 1988, in basicConfig
+    File "/usr/lib/python3.8/logging/__init__.py", line 1988, in basicConfig
     h = FileHandler(filename, mode)
-  File "/usr/lib/python3.8/logging/__init__.py", line 1147, in __init__
+    File "/usr/lib/python3.8/logging/__init__.py", line 1147, in __init__
     StreamHandler.__init__(self, self._open())
-  File "/usr/lib/python3.8/logging/__init__.py", line 1176, in _open
+    File "/usr/lib/python3.8/logging/__init__.py", line 1176, in _open
     return open(self.baseFilename, self.mode, encoding=self.encoding)
-PermissionError: [Errno 13] Permission denied: '/tmp/config_fs.log' "
-**分析：**  /tmp/config_fs.log 权限为777,按理说root可以写入，实际测试也可写入，但是以sudo 执行启动fuse时，报错没有权限
+    PermissionError: [Errno 13] Permission denied: '/tmp/config_fs.log' "
+```
+
+**分析：**  ``PermissionError: [Errno 13] Permission denied``:权限被拒绝， '/tmp/config_fs.log'是当前fuse的日志记录文件，权限为777,按理说root可以写入，实际测试也可写入，但是以sudo 执行启动fuse时，报错没有权限
+
 **解决：** 
-        1.以root用户创建/tmp/config_fs.log 并以sudo 权限启动fuse
-        2. 将日志文件路径改为/var/log/config_fs.log，并修改文件权限为666，以sudo 权限启动fuse
-- 3. 向 NTP/server 写入时，有许多问题：
-    - 1. 输入的ntp server之间没有按照格式输入，中间没有空格分隔
-    - 2. 输入的ntp server是无效的
-    - 3. 输入发生问题后，会导致原始的ntp配置文件被修改，系统时间同步异常
-        通过systemctl status ntp查看ntp 服务是运行的
-        - ntpq -p :返回No association ID's returned，NTP 服务运行但未成功同步。
-        - timedatectl status:System clock synchronized: no  系统时钟未与外部时间源（如 NTP 服务器）同步
+
+    1.以root用户创建/tmp/config_fs.log 并以sudo 权限启动fuse
+    2. 将日志文件路径改为/var/log/config_fs.log，并修改文件权限为666，以sudo 权限启动fuse
+
+
+#### 3. 向 NTP/server 写入时，有许多问题：
+
+- 1. 输入的ntp server之间没有按照格式输入，中间没有空格分隔
+- 2. 输入的ntp server是无效的
+- 3. 输入 ntp server 存在问题后，会导致 ntp 配置文件被修改，系统时间同步异常
+    - 通过systemctl status ntp查看ntp 服务是运行的
+    - ntpq -p :返回No association ID's returned，NTP 服务运行但未成功同步
+    - timedatectl status:System clock synchronized: no  系统时钟未与外部时间源（如 NTP 服务器）同步
 
 ### NTP 测试
 #### 1.NTP/enable 
 ##### 1.基本功能测试
-1.1 获取 NTP 服务状态
-    读取 config_fs/NTP/enable  
-    预期结果："1" 启用，"0" 禁用
+###### 1.1 获取 NTP 服务状态
+- 读取 config_fs/NTP/enable  
+- 预期结果："1" 启用，"0" 禁用
 
-1.2 启用 NTP 服务
-    步骤：echo "1" > config_fs/NTP/enable
-          通过systemctl is-active ntp查看ntp服务状态
-    
-1.3 禁用 NTP 服务
-    步骤： echo "0" > config_fs /NTP/enable
-          通过systemctl is-active ntp查看ntp服务状态
+```c
+linux@linux-VirtualBox:~/config_fs/NTP$ cat enable 
+1
+```
+
+```
+linux@linux-VirtualBox:~$ systemctl status ntp
+● ntp.service - Network Time Service
+     Loaded: loaded (/lib/systemd/system/ntp.service; enabled; vendor preset: enabled)
+     Active: active (running) since Tue 2025-02-25 13:09:08 CST; 3min 33s ago
+       Docs: man:ntpd(8)
+    Process: 24714 ExecStart=/usr/lib/ntp/ntp-systemd-wrapper (code=exited, status=0/SUCCESS)
+   Main PID: 24728 (ntpd)
+
+```
+##### 1.2 禁用 NTP 服务
+- 步骤： 
+    - echo "0" > config_fs /NTP/enable
+    - 通过 systemctl status ntp 查看 ntp 服务状态
+```    
+linux@linux-VirtualBox:~/config_fs/NTP$ echo "0" > enable 
+```
+```
+linux@linux-VirtualBox:~$ systemctl status ntp
+● ntp.service - Network Time Service
+     Loaded: loaded (/lib/systemd/system/ntp.service; disabled; vendor preset: enabled)
+     Active: inactive (dead)
+       Docs: man:ntpd(8)
+```
+
+##### 1.3 启用 NTP 服务
+- 步骤：
+    - echo "1" > config_fs/NTP/enable
+    - 通过 systemctl status ntp 查看 ntp 服务状态
+```
+linux@linux-VirtualBox:~/config_fs/NTP$ echo "1" > enable 
+```
+
+```
+linux@linux-VirtualBox:~$ systemctl status ntp
+● ntp.service - Network Time Service
+     Loaded: loaded (/lib/systemd/system/ntp.service; enabled; vendor preset: enabled)
+     Active: active (running) since Tue 2025-02-25 13:23:43 CST; 47s ago
+       Docs: man:ntpd(8)
+    Process: 25202 ExecStart=/usr/lib/ntp/ntp-systemd-wrapper (code=exited, status=0/SUCCESS)
+   Main PID: 25210 (ntpd)
+```
+
 
 ##### 2.输入错误值测试
-    若输入非'0'的值，会禁用NTP服务，只有当输入为"1"时，才启用NTP服务
+###### 2.1 向 NTP/enable 写入 "2"
+
+```
+linux@linux-VirtualBox:~/config_fs/NTP$ echo "2" > enable 
+```
+```
+linux@linux-VirtualBox:~$ systemctl status ntp
+● ntp.service - Network Time Service
+     Loaded: loaded (/lib/systemd/system/ntp.service; disabled; vendor preset: enabled)
+     Active: inactive (dead)
+       Docs: man:ntpd(8)
+
+```
+###### 2.2 向 NTP/enable 写入 "enable"
+```
+linux@linux-VirtualBox:~/config_fs/NTP$ echo "enable" > enable 
+```
+
+```
+systemctl status ntp
+● ntp.service - Network Time Service
+     Loaded: loaded (/lib/systemd/system/ntp.service; disabled; vendor preset: enabled)
+     Active: inactive (dead)
+       Docs: man:ntpd(8)
+
+```
+- 总结：由于 NTP/enable 的 write_cmd 是只有当写入值为 1 时才启动 ntp service,否则禁用 ntp service
+ ```shell
+    if [ {value} -eq 1 ]; then 
+        systemctl enable --now ntp; 
+    else 
+        systemctl disable --now ntp; 
+    fi
+```
+
 #### 2.NTP/server
 ##### 1.基本功能测试
-1.1 获取当前 NTP Server
-    步骤：cat config_fs/NTP/server
-    
-1.2 写入单个 NTP Server
-    步骤： echo "ntp1.aliyun.com" > config_fs/NTP/server
-    验证：1.查看配置文件 /etc/ntp.conf 是否更新成功
-          2.查看ntp 服务状态
-          3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
-          4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
+###### 1.1 获取当前 NTP Server
+- 步骤：
+    - cat config_fs/NTP/server
+    - 通过ntpq -p 显示所有配置的NTP Server 及其同步状态
+    - 通过nslookup {NTP Server} 查看服务器IP地址
+```
+linux@linux-VirtualBox:~/config_fs/NTP$ cat server 
+ntp1.aliyun.com
+ntp2.aliyun.com
+ntp.ntsc.ac.cn
+```
+```
+linux@linux-VirtualBox:~$ ntpq -p
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
+*8.149.241.96    100.100.61.91    2 u    8   64    7   11.267    0.535  48.173
++203.107.6.88    100.107.25.114   2 u   12   64    7   28.566    4.458  45.819
+ 114.118.7.163   123.139.33.3     2 u    9   64    1   32.134   11.453   0.000
+```
+```
+linux@linux-VirtualBox:~$ nslookup ntp1.aliyun.com
+Server:		127.0.0.53
+Address:	127.0.0.53#53
 
-1.3 写入多个 NTP Server
-    步骤： echo "ntp1.tencent.com ntp2.tencent.com ntp.ntsc.ac.cn" > config_fs/NTP/server
-    验证：1.查看配置文件 /etc/ntp.conf 是否更新成功
-          2.查看ntp 服务状态
-          3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
-          4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
+Non-authoritative answer:
+ntp1.aliyun.com	canonical name = ntp1.aliyun.com.gds.alibabadns.com.
+Name:	ntp1.aliyun.com.gds.alibabadns.com
+Address: 8.149.241.96
+
+linux@linux-VirtualBox:~$ nslookup ntp2.aliyun.com
+Server:		127.0.0.53
+Address:	127.0.0.53#53
+
+Non-authoritative answer:
+ntp2.aliyun.com	canonical name = ntp.aliyun.com.
+Name:	ntp.aliyun.com
+Address: 203.107.6.88
+
+linux@linux-VirtualBox:~$ nslookup ntp.ntsc.ac.cn
+Server:		127.0.0.53
+Address:	127.0.0.53#53
+
+Non-authoritative answer:
+Name:	ntp.ntsc.ac.cn
+Address: 114.118.7.161
+Name:	ntp.ntsc.ac.cn
+Address: 114.118.7.163
+
+```
+###### 1.2 写入单个 NTP Server
+- 步骤： echo "ntp1.aliyun.com" > config_fs/NTP/server
+- 验证：
+    - 1.查看配置文件 /etc/ntp.conf 是否更新成功
+    - 2.查看ntp 服务状态
+    - 3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
+    - 4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
+
+###### 1.3 写入多个 NTP Server
+- 步骤： echo "ntp1.tencent.com ntp2.tencent.com ntp.ntsc.ac.cn" > config_fs/NTP/server
+- 验证：
+    - 1.查看配置文件 /etc/ntp.conf 是否更新成功
+    - 2.查看ntp 服务状态
+    - 3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
+    - 4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
 
 ##### 2.异常情况测试
 1.1 输入无效的 NTP Server
 
 1.2 输入多个 NTP Server，但格式错误，使用其他符号间隔
 
+1.3 设定NTP Server之前不禁用ntp service
 
 
 

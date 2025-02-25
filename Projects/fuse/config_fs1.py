@@ -45,6 +45,7 @@ class CommandFile(VirtualFile):
             read_cmd = self.config['read_cmd']
             result = subprocess.run(read_cmd, shell=True, capture_output=True, text=True) #执行read_cmd命令
             output = result.stdout.strip() #获取输出内容
+            #output = subprocess.check_output(read_cmd, shell=True).decode().strip()
             if self.config.get('process_output'):
                 # 执行自定义的输出处理
                 locals = {'output': output}
@@ -53,7 +54,7 @@ class CommandFile(VirtualFile):
             return output + '\n'
         except Exception as e:
             logging.error(f"Read failed: {str(e)}")
-            return self.config.get('default_value', 'Error\n')
+            return self.config.get('default_value', 'Error') + '\n'
 
     def write(self, data: str) -> bool:
         try:
