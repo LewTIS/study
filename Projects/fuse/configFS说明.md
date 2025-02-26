@@ -579,74 +579,234 @@ systemctl status ntp
 ###### 1.1 获取当前 NTP Server
 - 步骤：
     - cat config_fs/NTP/server
+    ```
+    linux@linux-VirtualBox:~/config_fs/NTP$ cat server 
+    ntp1.aliyun.com
+    ntp2.aliyun.com
+    ntp.ntsc.ac.cn
+    ```
     - 通过ntpq -p 显示所有配置的NTP Server 及其同步状态
+    ```
+    linux@linux-VirtualBox:~$ ntpq -p
+        remote           refid      st t when poll reach   delay   offset  jitter
+    ==============================================================================
+    *8.149.241.96    100.100.61.91    2 u    8   64    7   11.267    0.535  48.173
+    +203.107.6.88    100.107.25.114   2 u   12   64    7   28.566    4.458  45.819
+    114.118.7.163   123.139.33.3     2 u    9   64    1   32.134   11.453   0.000
+    ```
     - 通过nslookup {NTP Server} 查看服务器IP地址
-```
-linux@linux-VirtualBox:~/config_fs/NTP$ cat server 
-ntp1.aliyun.com
-ntp2.aliyun.com
-ntp.ntsc.ac.cn
-```
-```
-linux@linux-VirtualBox:~$ ntpq -p
-     remote           refid      st t when poll reach   delay   offset  jitter
-==============================================================================
-*8.149.241.96    100.100.61.91    2 u    8   64    7   11.267    0.535  48.173
-+203.107.6.88    100.107.25.114   2 u   12   64    7   28.566    4.458  45.819
- 114.118.7.163   123.139.33.3     2 u    9   64    1   32.134   11.453   0.000
-```
-```
-linux@linux-VirtualBox:~$ nslookup ntp1.aliyun.com
-Server:		127.0.0.53
-Address:	127.0.0.53#53
 
-Non-authoritative answer:
-ntp1.aliyun.com	canonical name = ntp1.aliyun.com.gds.alibabadns.com.
-Name:	ntp1.aliyun.com.gds.alibabadns.com
-Address: 8.149.241.96
+    ```
+    linux@linux-VirtualBox:~$ nslookup ntp1.aliyun.com
+    Server:		127.0.0.53
+    Address:	127.0.0.53#53
 
-linux@linux-VirtualBox:~$ nslookup ntp2.aliyun.com
-Server:		127.0.0.53
-Address:	127.0.0.53#53
+    Non-authoritative answer:
+    ntp1.aliyun.com	canonical name = ntp1.aliyun.com.gds.alibabadns.com.
+    Name:	ntp1.aliyun.com.gds.alibabadns.com
+    Address: 8.149.241.96
 
-Non-authoritative answer:
-ntp2.aliyun.com	canonical name = ntp.aliyun.com.
-Name:	ntp.aliyun.com
-Address: 203.107.6.88
+    linux@linux-VirtualBox:~$ nslookup ntp2.aliyun.com
+    Server:		127.0.0.53
+    Address:	127.0.0.53#53
 
-linux@linux-VirtualBox:~$ nslookup ntp.ntsc.ac.cn
-Server:		127.0.0.53
-Address:	127.0.0.53#53
+    Non-authoritative answer:
+    ntp2.aliyun.com	canonical name = ntp.aliyun.com.
+    Name:	ntp.aliyun.com
+    Address: 203.107.6.88
 
-Non-authoritative answer:
-Name:	ntp.ntsc.ac.cn
-Address: 114.118.7.161
-Name:	ntp.ntsc.ac.cn
-Address: 114.118.7.163
+    linux@linux-VirtualBox:~$ nslookup ntp.ntsc.ac.cn
+    Server:		127.0.0.53
+    Address:	127.0.0.53#53
 
-```
+    Non-authoritative answer:
+    Name:	ntp.ntsc.ac.cn
+    Address: 114.118.7.161
+    Name:	ntp.ntsc.ac.cn
+    Address: 114.118.7.163
+    ```
 ###### 1.2 写入单个 NTP Server
-- 步骤： echo "ntp1.aliyun.com" > config_fs/NTP/server
+- 步骤： echo "ntp1.tencent.com" conig_fs/NTP/server
+```
+linux@linux-VirtualBox:~/config_fs/NTP$ echo "ntp1.tencent.com" > server
+```
 - 验证：
     - 1.查看配置文件 /etc/ntp.conf 是否更新成功
+    ![alt text](8e7e3e6f-0048-4594-9bee-4824b0ccfbc3.png)
     - 2.查看ntp 服务状态
+    ```
+    linux@linux-VirtualBox:~$ systemctl status ntp
+    ● ntp.service - Network Time Service
+     Loaded: loaded (/lib/systemd/system/ntp.service; enabled; vendor preset: enabled)
+     Active: active (running) since Wed 2025-02-26 08:07:28 CST; 10min ago
+       Docs: man:ntpd(8)
+    Process: 37628 ExecStart=/usr/lib/ntp/ntp-systemd-wrapper (code=exited, status=0/SUCCESS)
+   Main PID: 37636 (ntpd)
+    ```
     - 3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
+    ```
+    linux@linux-VirtualBox:~$ ntpq -p
+     remote           refid      st t when poll reach   delay   offset  jitter
+    ==============================================================================
+    *106.55.184.199  100.122.36.196   2 u   19   64    1   34.267    0.072   0.218
+    ```
     - 4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
+    ```
+    linux@linux-VirtualBox:~$ nslookup ntp1.tencent.com
+    Server:		127.0.0.53
+    Address:	127.0.0.53#53
+
+    Non-authoritative answer:
+    Name:	ntp1.tencent.com
+    Address: 106.55.184.199
+    ```
 
 ###### 1.3 写入多个 NTP Server
-- 步骤： echo "ntp1.tencent.com ntp2.tencent.com ntp.ntsc.ac.cn" > config_fs/NTP/server
+- 步骤： echo "ntp1.tencent.com ntp1.aliyun.com ntp.ntsc.ac.cn" > config_fs/NTP/server
+
+```
+linux@linux-VirtualBox:~/config_fs/NTP$ echo "ntp1.tencent.com ntp1.aliyun.com ntp.ntsc.ac.cn" > server
+```
 - 验证：
     - 1.查看配置文件 /etc/ntp.conf 是否更新成功
+    ![alt text](90116f6b-ae7b-4091-b9d2-a4aad29a1c9f.png)
     - 2.查看ntp 服务状态
-    - 3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server 
+        ```
+        linux@linux-VirtualBox:~$ systemctl status ntp
+        ● ntp.service - Network Time Service
+        Loaded: loaded (/lib/systemd/system/ntp.service; enabled; vendor preset: enabled)
+        Active: active (running) since Wed 2025-02-26 08:46:34 CST; 2min 5s ago
+        Docs: man:ntpd(8)
+        Process: 38879 ExecStart=/usr/lib/ntp/ntp-systemd-wrapper (code=exited, status=0/SUCCESS)
+        Main PID: 38887 (ntpd)
+        ```
+    - 3.通过ntpq -p查看ntp server 验证是否生效，'*' 表示当前使用的ntp server
+        ```
+        linux@linux-VirtualBox:~$ ntpq -p
+        remote           refid      st t when poll reach   delay   offset  jitter
+        ==============================================================================
+        106.55.184.199  100.122.36.196   2 u    2   64    1   34.190   -1.115   0.787
+        *203.107.6.88    100.107.25.114  2 u    2   64    1   26.322    4.724   1.001
+        114.118.7.163   123.139.33.3     2 u    2   64    1   33.154   -6.553   0.940
+        ```
     - 4.通过nslookup ntp1.aliyun.com查看当前的其对应的 ip 地址，并查看是否与ntpq -p 中的ntp server ip地址一致
+        ```
+        linux@linux-VirtualBox:~$ nslookup ntp1.tencent.com
+        Server:		127.0.0.53
+        Address:	127.0.0.53#53
 
+        Non-authoritative answer:
+        Name:	ntp1.tencent.com
+        Address: 106.55.184.199
+
+        linux@linux-VirtualBox:~$ nslookup ntp2.aliyun.com
+        Server:		127.0.0.53
+        Address:	127.0.0.53#53
+
+        Non-authoritative answer:
+        ntp2.aliyun.com	canonical name = ntp.aliyun.com.
+        Name:	ntp.aliyun.com
+        Address: 203.107.6.88
+
+        linux@linux-VirtualBox:~$ nslookup ntp.ntsc.ac.cn
+        Server:		127.0.0.53
+        Address:	127.0.0.53#53
+
+        Non-authoritative answer:
+        Name:	ntp.ntsc.ac.cn
+        Address: 114.118.7.161
+        Name:	ntp.ntsc.ac.cn
+        Address: 114.118.7.163
+        ```
 ##### 2.异常情况测试
-1.1 输入无效的 NTP Server
+###### 1.1 输入无效的 NTP Server
+- 写入无效的 NTP Server，如 "invalid.ntp.server"
+    ```
+    linux@linux-VirtualBox:~/config_fs/NTP$ echo "invalid.ntp.server" > server
+    ```
+- 通过 ntptime 查看同步状态
+    ```
+    linux@linux-VirtualBox:~$ ntptime
+    ntp_gettime() returns code 5 (ERROR) 
+    time eb68f186.0a6be7b0  Wed, Feb 26 2025  9:48:54.040, (.040709038),
+    maximum error 16000000 us, estimated error 16000000 us, TAI offset 37
+    ntp_adjtime() returns code 5 (ERROR) #系统时间调整失败
+    modes 0x0 (),
+    offset 0.000 us, frequency 18.267 ppm, interval 1 s,
+    maximum error 16000000 us, estimated error 16000000 us,
+    status 0x2041 (PLL,UNSYNC,NANO), #系统时间未同步到 NTP 服务器
+    time constant 3, precision 0.001 us, tolerance 500 ppm,
 
-1.2 输入多个 NTP Server，但格式错误，使用其他符号间隔
+    ```
+- 通过 ntpq -p 查看 NTP 服务器状态
+    ```
+    linux@linux-VirtualBox:~$ ntpq -p
+    No association ID's returned
+    ```
+没有显示任何关联 ID，说明没有 NTP 服务器可用。
+###### 1.2 输入多个 NTP Server，但格式错误，使用其他符号间隔
+- 写入多个 ntp server,中间用逗号间隔，如："ntp1.tencent.com,ntp2.aliyun.com,ntp.ntsc.ac.cn"
+    ```
+    linux@linux-VirtualBox:~/config_fs/NTP$ echo "ntp1.tencent.com,ntp2.aliyun.com,ntp.ntsc.ac.cn" > server
+    ```
+- 通过 ntptime 查看同步状态
+    ```
+    linux@linux-VirtualBox:~$ ntptime
+    ntp_gettime() returns code 5 (ERROR) 
+    time eb68f186.0a6be7b0  Wed, Feb 26 2025  9:48:54.040, (.040709038),
+    maximum error 16000000 us, estimated error 16000000 us, TAI offset 37
+    ntp_adjtime() returns code 5 (ERROR) #系统时间调整失败
+    modes 0x0 (),
+    offset 0.000 us, frequency 18.267 ppm, interval 1 s,
+    maximum error 16000000 us, estimated error 16000000 us,
+    status 0x2041 (PLL,UNSYNC,NANO), #系统时间未同步到 NTP 服务器
+    time constant 3, precision 0.001 us, tolerance 500 ppm,
+    ```
+- 通过 ntpq -p 查看 NTP 服务器状态
+    ```
+    linux@linux-VirtualBox:~$ ntpq -p
+    No association ID's returned
+    ```
 
-1.3 设定NTP Server之前不禁用ntp service
+###### 1.3 设定NTP Server之前不禁用ntp service
+
+- 1.修改config.yaml中 NTP/server 的 write_cmd:去掉 disable ntp service 
+    ```yaml
+    write_cmd: |
+        #1. stop ntp server
+        #systemctl stop ntp
+        #2. remove existing server
+        sed -i '/^server/d' /etc/ntp.conf
+        #3. add new ntp server
+        for server in $(echo {value}); do
+            echo "server $server iburst" >> /etc/ntp.conf
+        done
+        #4. start ntp server
+        #systemctl start ntp
+    ```
+- 2.修改之前的 ntp server
+    ```
+    ntpq -p
+        remote           refid      st t when poll reach   delay   offset  jitter
+    ==============================================================================
+    *106.55.184.199  9.20.184.92      2 u    8   64    1   33.648   -0.326   0.710
+    +111.230.189.174 100.122.36.196   2 u    7   64    1   32.782   -0.436   0.316
+    +106.55.184.200  100.122.36.196   2 u    9   64    1   37.627   -3.604   0.506
+    ```
+- 3.设定新的 ntp server
+    ```
+    linux@linux-VirtualBox:~/config_fs/NTP$ echo "ntp1.aliyun.com ntp2.aliyun.com ntp.ntsc.ac.cn" > server
+    ```
+- 4.查看 ntp server 同步状况
+    ```
+    linux@linux-VirtualBox:~$ ntpq -p
+        remote           refid      st t when poll reach   delay   offset  jitter
+    ==============================================================================
+    +106.55.184.199  100.122.36.196   2 u   21   64  177   33.400    1.404   1.300
+    +111.230.189.174 100.122.36.196   2 u   14   64  157   32.520    1.775 140.731
+    *106.55.184.200  100.122.36.196   2 u   84   64  176   36.020   -0.654   2.172
+    ```
+    **当在设定 ntp server 之前，若没有disable ntp service,则设定不会生效**
 
 
 
