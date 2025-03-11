@@ -1,26 +1,26 @@
 # coding: utf-8
 import socket
 
-# create tcp connection
-s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+#create tcp connection
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-s.connect(('httpbin.org',80))
+# connect server
+s.connect(('127.0.0.1',9999))
 
-s.send(b'GET /get HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n')
+# receive
+msg = s.recv(1024).decode('utf-8')
+print(msg)
+# send msg to server
 
-# recive response
-buffer = []
-while True:
-    d = s.recv(1024)
-    if d:
-        buffer.append(d)
-    else:
+for x in [b'Python', b'PHP']:
+    x = b'client:'+ x
+    s.send(x)
+    try:
+        response = s.recv(1024)  
+        print(response.decode('utf-8'))
+    except ConnectionResetError:
+        print("连接已被服务器关闭")
         break
-data = b''.join(buffer)
 
+s.send(b'exit')
 s.close()
-header,body = data.split(b'\r\n\r\n', 1) #按空行切割头与正文（\r\n\r\n 代表行结束。分割head和body）
-print(header.decode('utf-8'))
-
-with open('request.json','wb') as f:
-    f.write(body)
