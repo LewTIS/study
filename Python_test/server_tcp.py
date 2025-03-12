@@ -43,6 +43,6 @@ s.listen(5)
 
 print('服务器启动 (ctrl+c退出)')
 while True:
-    sock,addr = s.accept()
+    sock,addr = s.accept() # 返回一个元组，里面有两个元素：socket对象和客户端地址及端口，如(socket,('127.0.0.1',9999))
     threading.Thread(target=handle_client,args=(sock,addr)).start()
-    
+
