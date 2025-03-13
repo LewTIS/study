@@ -5,6 +5,7 @@ import time
 import random
 import datetime
 import sys
+import asyncio
 """
 print("hello,world")
 x = input("please input x:")
@@ -570,8 +571,9 @@ class MyCustomError(Exception):
             return 'MyCustomError, {0}'.format(self.message)
         else:
             return 'MyCustomError has been raise'
-"""
+
 # 自定义异常类 ：字典中的值只能是整数或浮点数，负责抛出异常
+
 
 class IntFloatValueError(Exception):
     def __init__(self,value):
@@ -587,9 +589,9 @@ class KeyValueContructError(Exception):
         self.value = value
     
     def __str__(self):
-        return (f"""keys and values need to be passed as either list or tuple.
+        return (f'''keys and values need to be passed as either list or tuple.
                 Key: {self.key} (type: {type(self.key)})
-                Value: {self.value} (type: {type(self.value)})"""
+                Value: {self.value} (type: {type(self.value)})'''
             )
 
 
@@ -624,5 +626,27 @@ print(f"sys.argv = {sys.argv}")
 print(f"the file is {sys.argv[0]}")
 
 
+# 异步协程函数
+async def helloworld(n):
+    print('hello world! %s' % n)
+    r = await asyncio.sleep(3)  # 等待3秒，事件循环调度执行其他任务，等待3秒后回到之前任务向下执行
+    print('hello %s %s ' %(r,n))
+
+loop = asyncio.get_event_loop() # 创建事件循环
+tasks = [helloworld(1),helloworld(2),helloworld(3),helloworld(4)] # 创建任务列表
+loop.run_until_complete(asyncio.wait(tasks))  # 将任务列表注册到事件循环中，直到所有任务完成
+loop.close() # 关闭事件循环
+"""
+async def helloworld(n):
+    print('hello world %s' % n)
+    r = await asyncio.sleep(3)
+    print('hello %s %s' %(r,n))
+
+async def main():
+    tasks = [helloworld(1),helloworld(2),helloworld(3)]
+    await asyncio.wait(tasks)
     
+if __name__ == '__main__':
+    asyncio.run(main())
     
+   

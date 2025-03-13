@@ -1,0 +1,1728 @@
+    <!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <link rel="canonical" href="https://blog.csdn.net/shanandqiu/article/details/115351654"/>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="renderer" content="webkit"/>
+    <meta name="force-rendering" content="webkit"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="report" content='{"pid": "blog", "spm":"1001.2101"}'>
+    <meta name="referrer" content="always">
+    <meta http-equiv="Cache-Control" content="no-siteapp" /><link rel="alternate" media="handheld" href="#" />
+    <meta name="shenma-site-verification" content="5a59773ab8077d4a62bf469ab966a63b_1497598848">
+    <meta name="applicable-device" content="pc">
+    <link  href="https://g.csdnimg.cn/static/logo/favicon32.ico"  rel="shortcut icon" type="image/x-icon" />
+    <title>Linux Netlink通信机制详解_linux netlink 异步通知 csdn-CSDN博客</title>
+    <script>
+      (function(){ 
+        var el = document.createElement("script"); 
+        el.src = "https://s3a.pstatp.com/toutiao/push.js?1abfa13dfe74d72d41d83c86d240de427e7cac50c51ead53b2e79d40c7952a23ed7716d05b4a0f683a653eab3e214672511de2457e74e99286eb2c33f4428830"; 
+        el.id = "ttzz"; 
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(el, s);
+      })(window)
+    </script>
+        <meta name="keywords" content="linux netlink 异步通知 csdn">
+        <meta name="csdn-baidu-search"  content='{"autorun":true,"install":true,"keyword":"linux netlink 异步通知 csdn"}'>
+    <meta name="description" content="文章浏览阅读1.1k次。前面有一篇文章其实已经介绍过Netlink方面的知识，还有一个内核和用户空间之间的一个交互例子，这篇文章主要是更细节和基础的知识介绍！Netlink是一种特殊的socket，它是Linux所特有的，由于传送的消息是暂存在socket接收缓存中，并不被接收者立即处理，所以netlink是一种异步通信机制。系统调用和ioctl则是同步通信机制。用户空间进程可以通过标准socketAPI来实现消息的发送、接收，在Linux中，有很多用户空间和内核空间的交互都是通过Netlink机制完成..._linux netlink 异步通知 csdn">
+        <link rel="stylesheet" type="text/css" href="https://csdnimg.cn/release/blogv2/dist/pc/css/detail_enter-097f33faa6.min.css">
+    <style>
+        #content_views pre{
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none; 
+            user-select: none; 
+        }
+        #content_views pre code{
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none; 
+            user-select: none; 
+        }
+    </style>
+    <script type="application/ld+json">{"@context":"https://ziyuan.baidu.com/contexts/cambrian.jsonld","@id":"https://blog.csdn.net/shanandqiu/article/details/115351654","appid":"1638831770136827","pubDate":"2021-03-31T15:27:58","title":"Linux Netlink通信机制详解_linux netlink 异步通知 csdn-CSDN博客","upDate":"2021-03-31T15:31:54"}</script>
+        <link rel="stylesheet" type="text/css" href="https://csdnimg.cn/release/blogv2/dist/pc/themesSkin/skin3-template/skin3-template-762f7595fd.min.css">
+    <script src="https://g.csdnimg.cn/lib/jquery/1.12.4/jquery.min.js" type="text/javascript"></script>
+    <script src="https://g.csdnimg.cn/lib/jquery-migrate/1.4.1/jquery-migrate.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        var isCorporate = false;
+        var username =  "shanandqiu";
+        var skinImg = "white";
+
+        var blog_address = "https://blog.csdn.net/shanandqiu";
+        var currentUserName = "";
+        var isOwner = false;
+        var loginUrl = "http://passport.csdn.net/account/login?from=https://blog.csdn.net/shanandqiu/article/details/115351654";
+        var blogUrl = "https://blog.csdn.net/";
+        var avatar = "https://profile-avatar.csdnimg.cn/default.jpg!1";
+        var articleTitle = "Linux Netlink通信机制详解";
+        var articleDesc = "文章浏览阅读1.1k次。前面有一篇文章其实已经介绍过Netlink方面的知识，还有一个内核和用户空间之间的一个交互例子，这篇文章主要是更细节和基础的知识介绍！Netlink是一种特殊的socket，它是Linux所特有的，由于传送的消息是暂存在socket接收缓存中，并不被接收者立即处理，所以netlink是一种异步通信机制。系统调用和ioctl则是同步通信机制。用户空间进程可以通过标准socketAPI来实现消息的发送、接收，在Linux中，有很多用户空间和内核空间的交互都是通过Netlink机制完成..._linux netlink 异步通知 csdn";
+        var articleTitles = "Linux Netlink通信机制详解_linux netlink 异步通知 csdn-CSDN博客";
+        var nickName = "shanandqiu";
+        var articleDetailUrl = "https://blog.csdn.net/shanandqiu/article/details/115351654";
+        var vipUrlV = "https://mall.csdn.net/vip?vipSource=learningVip";
+        if(window.location.host.split('.').length == 3) {
+            blog_address = blogUrl + username;
+        }
+        var skinStatus = "White";
+        var blogStaticHost = "https://csdnimg.cn/release/blogv2/"
+          var payColumn = false
+    </script>
+        <meta name="toolbar" content='{"type":"0","fixModel":"1"}'>
+    <script src="https://g.csdnimg.cn/??fixed-sidebar/1.1.7/fixed-sidebar.js" type="text/javascript"></script>
+      <script src="https://cdn-static-devbit.csdn.net/ai100/chat/chat-search.js?v=2" type="text/javascript"></script>
+    <script src='//g.csdnimg.cn/common/csdn-report/report.js' type='text/javascript'></script>
+    <link rel="stylesheet" type="text/css" href="https://csdnimg.cn/public/sandalstrap/1.4/css/sandalstrap.min.css">
+    <style>
+        .MathJax, .MathJax_Message, .MathJax_Preview{
+            display: none
+        }
+    </style>
+    <script src="https://dup.baidustatic.com/js/ds.js"></script>
+      <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "lgtpix6r85");
+      </script>
+    <script src="/cdn_cgi_bs_captcha/static/js/waf_captcha_embedded_bs.js"></script>
+</head>
+  <body class="nodata  " style="">
+    <div id="toolbarBox" style="min-height: 48px;"></div>
+        <script>
+            var toolbarSearchExt = '{"id":115351654,"landingWord":["linux netlink 异步通知 csdn"],"queryWord":"","tag":[],"title":"Linux Netlink通信机制详解"}';
+        </script>
+    <script src="https://g.csdnimg.cn/common/csdn-toolbar/csdn-toolbar.js" type="text/javascript"></script>
+    <script>
+    (function(){
+        var bp = document.createElement('script');
+        var curProtocol = window.location.protocol.split(':')[0];
+        if (curProtocol === 'https') {
+            bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+        }
+        else {
+            bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+        }
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(bp, s);
+    })();
+    </script>
+
+    <link rel="stylesheet" href="https://csdnimg.cn/release/blogv2/dist/pc/css/blog_code-01256533b5.min.css">
+    <link rel="stylesheet" href="https://csdnimg.cn/release/blogv2/dist/mdeditor/css/editerView/chart-3456820cac.css" />
+    <link rel="stylesheet" href="https://g.csdnimg.cn/lib/swiper/6.0.4/css/swiper.css" />
+    <script src="https://g.csdnimg.cn/lib/swiper/6.0.4/js/swiper.js" async></script>
+    <script>
+      var articleId = 115351654;
+        var privateEduData = ["git","函数","数据结构","csdn"];//高亮数组
+        var privateData = ["linux","kernel","socket","ai","ml"];//高亮数组
+      var commentscount = 0;
+      var commentAuth = 2;
+      var curentUrl = "https://blog.csdn.net/shanandqiu/article/details/115351654";
+      var myUrl = "https://my.csdn.net/";
+      var isGitCodeBlog = false;
+      var isOpenSourceBlog = false;
+      var isVipArticle = false;
+        var highlight = ["netlink","linux","csdn","机制","通信","异步","通知","详解"];//高亮数组
+        var isRecommendModule = true;
+          var isBaiduPre = true;
+          var baiduCount = 2;
+          var setBaiduJsCount = 10;
+        var viewCountFormat = 1179;
+      var share_card_url = "https://app-blog.csdn.net/share?article_id=115351654&username=shanandqiu"
+      var mallVipUrl = "https://mall.csdn.net/vip?vipSource=article"
+      var vipArticleAbStyle = "t_1"
+
+      var vipArticleCpStyle = "t_1"
+      var articleType = 2;
+      var baiduKey = "linux netlink 异步通知 csdn";
+      var copyPopSwitch = true;
+      var needInsertBaidu = true;
+      var recommendRegularDomainArr = ["blog.csdn.net/.+/article/details/","download.csdn.net/download/","edu.csdn.net/course/detail/","ask.csdn.net/questions/","bbs.csdn.net/topics/","www.csdn.net/gather_.+/"]
+      var codeStyle = "atom-one-light";
+      var baiduSearchType = "baidulandingword";
+      var sharData = "{\"hot\":[{\"id\":1,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/a5f4260710904e538002a6ab337939b3.png\"},{\"id\":2,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/188b37199a2c4b74b1d9ffc39e0d52de.png\"},{\"id\":3,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/14ded358b631444581edd98a256bc5af.png\"},{\"id\":4,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/1470f23a770444d986ad551b9c33c5be.png\"},{\"id\":5,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/c329f5181dc74f6c9bd28c982bb9f91d.png\"},{\"id\":6,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/ccd8a3305e81460f9c505c95b432a65f.png\"},{\"id\":7,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/bc89d8283389440d97fc4d30e30f45e1.png\"},{\"id\":8,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/452d485b4a654f5592390550d2445edf.png\"},{\"id\":9,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/f8b9939db2ed474a8f43a643015fc8b7.png\"},{\"id\":10,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/6de8864187ab4ed3b1db0856369c36ff.png\"},{\"id\":11,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/673cc3470ff74072acba958dc0c46e2d.png\"},{\"id\":12,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/930c119760ac4491804db80f9c6d4e3f.png\"},{\"id\":13,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/15e6befb05a24233bc2b65e96aa8d972.png\"},{\"id\":14,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/2075fd6822184b95a41e214de4daec13.png\"},{\"id\":15,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/859b1552db244eb6891a809263a5c657.png\"},{\"id\":16,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/0be2f920f1f74290a98921974a9613fd.png\"},{\"id\":17,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/2e97e00b43f14afab494ea55ef3f4a6e.png\"},{\"id\":18,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/ff4ab252f46e444686f5135d6ebbfec0.png\"},{\"id\":19,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/ae029bbe99564e79911657912d36524f.png\"},{\"id\":20,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/b3ece39963de440388728e9e7b9bf427.png\"},{\"id\":21,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/6f14651a99ba486e926d63b6fa692997.png\"},{\"id\":22,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/83ceddf050084875a341e32dcceca721.png\"},{\"id\":23,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/b90368b8fd5d4c6c8c79a707d877cf7c.png\"},{\"id\":24,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/aeffae14ecf14e079b2616528c9a393b.png\"},{\"id\":25,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/c5a06b5a13d44d16bed868fc3384897a.png\"},{\"id\":26,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/08b697658b844b318cea3b119e9541ef.png\"},{\"id\":27,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/68ccb0b8d09346ac961d2b5c1a8c77bf.png\"},{\"id\":28,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/a2227a247e37418cbe0ea972ba6a859b.png\"},{\"id\":29,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/3a42825fede748f9993e5bb844ad350d.png\"},{\"id\":30,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/8882abc1dd484224b636966ea38555c3.png\"},{\"id\":31,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/4f6a5f636a3e444d83cf8cc06d87a159.png\"},{\"id\":32,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/1953ef79c56b4407b78d7181bdff11c3.png\"},{\"id\":33,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/c04a2a4f772948ed85b5b0380ed36287.png\"},{\"id\":34,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/5b4fecd05091405ea04d8c0f53e9f2c7.png\"},{\"id\":35,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/b89f576d700344e280d6ceb2a66c2420.png\"},{\"id\":36,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/1c65780e11804bbd9971ebadb3d78bcf.png\"},{\"id\":37,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/d590db2055f345db9706eb68a7ec151a.png\"},{\"id\":38,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/fe602f80700b4f6fb3c4a9e4c135510e.png\"},{\"id\":39,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/39ff2fcd31e04feba301a071976a0ba7.png\"},{\"id\":40,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/f9b61b3d113f436b828631837f89fb39.png\"},{\"id\":41,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/df1aca5f610c4ad48cd16da88c9c8499.png\"},{\"id\":42,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/d7acf73a1e6b41399a77a85040e10961.png\"},{\"id\":43,\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/b7f1b63542524b97962ff649ab4e7e23.png\"}],\"vip\":[{\"id\":1,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101150.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101154.png\"},{\"id\":2,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101204.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101208.png\"},{\"id\":3,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101211.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101215.png\"},{\"id\":4,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101218.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101220.png\"},{\"id\":5,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101223.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220920101226.png\"},{\"id\":6,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100635.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100639.png\"},{\"id\":7,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100642.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100644.png\"},{\"id\":8,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100647.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100649.png\"},{\"id\":9,\"vipUrl\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100652.png\",\"url\":\"https:\\/\\/img-home.csdnimg.cn\\/images\\/20220922100655.png\"},{\"id\":10,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/55de67481fde4b04b97ad78f11fe369a.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/bb2418fb537e4d78b10d8765ccd810c5.png\"},{\"id\":11,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/579c713394584d128104ef1044023954.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/f420d9fbcf5548079d31b5e809b6d6cd.png\"},{\"id\":12,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/75b7f3155ba642f5a4cc16b7baf44122.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/a9030f5877be401f8b340b80b0d91e64.png\"},{\"id\":13,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/0903d33cafa54934be3780aa54ae958d.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/2cd8c8929f5a42fca5da2a0aeb456203.png\"},{\"id\":14,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/949fd7c22884439fbfc3c0e9c3b8dee7.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/dafbea9bd9eb4f3b962b48dc41657f89.png\"},{\"id\":15,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/4119cfddd71d4e6a8a27a18dbb74d90e.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/c56310c8b6384d9e85388e4e342ce508.png\"},{\"id\":16,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/121575274da142bcbbbbc2e8243dd411.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/5013993de06542f881018bb9abe2edf7.png\"},{\"id\":17,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/4d97aa6dd4fe4f09a6bef5bdf8a6abcd.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/76f23877b6ad4066ad45ce8e31b4b977.png\"},{\"id\":18,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/fdb619daf21b4c829de63b9ebc78859d.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/a1abe5d27a5441f599adfe662f510243.png\"},{\"id\":19,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/676b7707bb11410f8f56bc0ed2b2345c.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/7ac5b467fbf24e1d8c2de3f3332c4f54.png\"},{\"id\":20,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/0becb8cc227e4723b765bdd69a20fd4a.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/fdec85b26091486b9a89d0b8d45c3749.png\"},{\"id\":21,\"vipUrl\":\"https:\\/\\/img-blog.csdnimg.cn\\/1a6c06235ad44941b38c54cbc25a370c.png\",\"url\":\"https:\\/\\/img-blog.csdnimg.cn\\/410a06cda2d44b0c84578f88275caf70.png\"}],\"map\":{\"hot\":\"热门\",\"vip\":\"VIP\"}}";
+      
+      var canRead = true;
+      var blogMoveHomeArticle = false;
+      var showSearchText = "";
+      var sideToolbarResult = "exp";
+      var sideToolbarDeepseek = "exp1";
+      var articleSource = 1;
+      var articleReport = '{"pid": "blog", "spm":"1001.2101"}';
+        var baiduSearchChannel = 'pc_relevant'
+        var baiduSearchIdentification = '.235^v43^pc_blog_bottom_relevance_base2'
+        var distRequestId = '1741829789060_59803'
+        var initRewardObject = {
+          giver: currentUserName,
+          anchor: username,
+          articleId: articleId,
+          sign: ''
+        }
+        var isLikeStatus = false;
+        var isUnLikeStatus = false;
+        var studyLearnWord = "";
+        var unUseCount = 0;
+        var codeMaxSize = 0;
+        var overCost = true;
+        var isCurrentUserVip = false;
+        var contentViewsHeight = 0;
+        var contentViewsCount = 0;
+        var contentViewsCountLimit = 5;
+        var isShowConcision = false;
+        var lastTime = 0
+        var postTime = "2021-03-31 15:31:54"
+      var isCookieConcision = false
+      var isHasDirectoryModel = false
+      var isShowSideModel = false
+      var isShowDirectoryModel = true
+      function getCookieConcision(sName){
+        var allCookie = document.cookie.split("; ");
+        for (var i=0; i < allCookie.length; i++){
+          var aCrumb = allCookie[i].split("=");
+          if (sName == aCrumb[0])
+            return aCrumb[1];
+        }
+        return null;
+      }
+      if (getCookieConcision('blog_details_concision') && getCookieConcision('blog_details_concision') == 0){
+        isCookieConcision = true
+        isShowSideModel = true
+        isShowDirectoryModel = false
+      }
+    </script>
+        <div class="main_father clearfix d-flex justify-content-center " style="height:100%;">
+          <div class="container clearfix " id="mainBox">
+          <script>
+          if (!isCookieConcision) {
+            $('.main_father').removeClass('mainfather-concision')
+            $('.main_father .container').removeClass('container-concision')
+          } else {
+            $('#mainBox').css('margin-right', '0')
+          }
+          </script>
+          <main>
+<script type="text/javascript">
+    var resourceId =  "";
+    function getQueryString(name) {   
+      var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象  
+      var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+      if( r != null ) return decodeURIComponent( r[2] ); return '';   
+    }
+    function stripscript(s){ 
+      var pattern = new RegExp("[`~!@#$^&*()=|{}':;',\\[\\].<>/?~！@#￥……&*（）——|{}【】‘；：”“'。，、？%]") 
+      var rs = ""; 
+      for (var i = 0; i < s.length; i++) { 
+        rs = rs+s.substr(i, 1).replace(pattern, ''); 
+      } 
+      return rs;
+    }
+    var blogHotWords = stripscript(getQueryString('utm_term')).length > 1 ? stripscript(getQueryString('utm_term')) : ''
+</script>
+<div class="blog-content-box">
+    <div class="article-header-box">
+        <div class="article-header">
+            <div class="article-title-box">
+                <h1 class="title-article" id="articleContentId">Linux Netlink通信机制详解</h1>
+            </div>
+            <div class="article-info-box">
+                    <div class="up-time">最新推荐文章于&nbsp;2024-02-29 20:44:48&nbsp;发布</div>
+                <div class="article-bar-top">
+                    <img class="article-type-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/reprint.png" alt="">
+                    <div class="bar-content">
+                      <a class="follow-nickName " href="https://blog.csdn.net/shanandqiu" target="_blank" rel="noopener" title="shanandqiu">shanandqiu</a>
+                    <img class="article-time-img article-heard-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/newCurrentTime2.png" alt="">
+                          <span class="time blog-postTime" data-time="2021-03-31 15:31:54">最新推荐文章于&nbsp;2024-02-29 20:44:48&nbsp;发布</span>
+                   <div class="read-count-box">
+                      <img class="article-read-img article-heard-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/articleReadEyes2.png" alt="">
+                      <span class="read-count">阅读量1.1k</span>
+                      <a id="blog_detail_zk_collection" class="un-collection" data-report-click='{"mod":"popu_823","spm":"1001.2101.3001.4232","ab":"new"}'>
+                          <img class="article-collect-img article-heard-img un-collect-status isdefault" style="display:inline-block" src="https://csdnimg.cn/release/blogv2/dist/pc/img/tobarCollect2.png" alt="">
+                          <img class="article-collect-img article-heard-img collect-status isactive" style="display:none" src="https://csdnimg.cn/release/blogv2/dist/pc/img/tobarCollectionActive2.png" alt="">
+                          <span class="name">收藏</span>
+                          <span class="get-collection">
+                              5
+                          </span>
+                      </a>
+                      <div class="read-count-box is-like">
+                        <img class="article-read-img article-heard-img" style="display:none" id="is-like-imgactive-new" src="https://csdnimg.cn/release/blogv2/dist/pc/img/newHeart2023Active.png" alt="">
+                        <img class="article-read-img article-heard-img" style="display:block" id="is-like-img-new" src="https://csdnimg.cn/release/blogv2/dist/pc/img/newHeart2023Black.png" alt="">
+                        <span class="read-count" id="blog-digg-num">点赞数
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="blog-tags-box">
+                    <div class="tags-box artic-tag-box">
+                    </div>
+                </div>
+                <div class="slide-content-box">
+                    <div class="article-source-link">
+                        原文链接：<a href="https://blog.csdn.net/fuyuande/article/details/80489988" target="_blank" rel="noopener">https://blog.csdn.net/fuyuande/article/details/80489988</a>
+                    </div>
+                </div>
+                
+                <div class="operating">
+                    <a class="href-article-edit slide-toggle">版权</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div id="blogHuaweiyunAdvert"></div>
+    <article class="baidu_pl">
+        <div id="article_content" class="article_content clearfix">
+        <link rel="stylesheet" href="https://csdnimg.cn/release/blogv2/dist/mdeditor/css/editerView/kdoc_html_views-1a98987dfd.css">
+        <link rel="stylesheet" href="https://csdnimg.cn/release/blogv2/dist/mdeditor/css/editerView/ck_htmledit_views-704d5b9767.css">
+             
+                <div id="content_views" class="htmledit_views">
+                    <p> </p> 
+<p>前面有一篇文章其实已经介绍过Netlink方面的知识&#xff0c;还有一个内核和用户空间之间的一个交互例子&#xff0c;这篇文章主要是更细节和基础的知识介绍&#xff01;</p> 
+<p>Netlink 是一种特殊的 socket&#xff0c;它是 Linux 所特有的&#xff0c;由于传送的消息是暂存在socket接收缓存中&#xff0c;并不被接收者立即处理&#xff0c;所以netlink是一种异步通信机制。 系统调用和ioctl 则是同步通信机制。</p> 
+<p>用户空间进程可以通过标准socket API来实现消息的发送、接收&#xff0c;在Linux中&#xff0c;有很多用户空间和内核空间的交互都是通过Netlink机制完成的&#xff0c;在Linux3.0的内核版本中定义了下面的21个用于Netlink通信的宏&#xff0c;其中默认的最大值为32.我这里重点关注的是IPv6路由部分的通信过程。</p> 
+<p>  在include/linux/&#96;netlink.h文件中定义了下面的用于通信的宏&#xff01;</p> 
+<ol><li>#define NETLINK_ROUTE        0    /* Routing/device hook                */</li><li>#define NETLINK_UNUSED        1    /* Unused number                */</li><li>#define NETLINK_USERSOCK    2    /* Reserved for user mode socket protocols     */</li><li>#define NETLINK_FIREWALL    3    /* Firewalling hook                */</li><li>#define NETLINK_INET_DIAG    4    /* INET socket monitoring            */</li><li>#define NETLINK_NFLOG        5    /* netfilter/iptables ULOG */</li><li>#define NETLINK_XFRM        6    /* ipsec */</li><li>#define NETLINK_SELINUX        7    /* SELinux event notifications */</li><li>#define NETLINK_ISCSI        8    /* Open-iSCSI */</li><li>#define NETLINK_AUDIT        9    /* auditing */</li><li>#define NETLINK_FIB_LOOKUP    10    </li><li>#define NETLINK_CONNECTOR    11</li><li>#define NETLINK_NETFILTER    12    /* netfilter subsystem */</li><li>#define NETLINK_IP6_FW        13</li><li>#define NETLINK_DNRTMSG        14    /* DECnet routing messages */</li><li>#define NETLINK_KOBJECT_UEVENT    15    /* Kernel messages to userspace */</li><li>#define NETLINK_GENERIC        16</li><li>/* leave room for NETLINK_DM (DM Events) */</li><li>#define NETLINK_SCSITRANSPORT    18    /* SCSI Transports */</li><li>#define NETLINK_ECRYPTFS    19</li><li>#define NETLINK_RDMA        20</li><li> </li><li>#define MAX_LINKS 32</li></ol> 
+<p>   用户态可以使用标准的socket APIs&#xff0c; socket(), bind(), sendmsg(), recvmsg() 和 close() 等函数就能很容易地使用 netlink socket&#xff0c;我们在用户空间可以直接通过socket函数来使用Netlink通信&#xff0c;例如可以通过下面的方式&#xff1a;</p> 
+<ol><li>sock &#61; socket (AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);</li></ol> 
+<p>说明&#xff1a;第一个参数必须是 AF_NETLINK 或 PF_NETLINK&#xff0c;在 Linux 中&#xff0c;它们俩实际为一个东西&#xff0c;它表示要使用netlink&#xff0c;第二个参数必须是SOCK_RAW或SOCK_DGRAM&#xff0c; 第三个参数指定netlink协议类型&#xff0c;可以是自己在netlink.h中定义的&#xff0c;也可以是内核中已经定义好的。上面的例子使用主要是路由的Netlink协议。也可以是上面21中协议类型的其中之一。</p> 
+<p>NETLINK_GENERIC是一个通用的协议类型&#xff0c;它是专门为用户使用的&#xff0c;因此&#xff0c;用户可以直接使用它&#xff0c;而不必再添加新的协议类型。</p> 
+<p>对于每一个netlink协议类型&#xff0c;可以使用多播的概念&#xff0c;最多可以有 32个多播组&#xff0c;每一个多播组用一个位表示&#xff0c;netlink 的多播特性使得发送消息给同一个组仅需要一次系统调用&#xff0c;因而对于需要多播消息的应用而言&#xff0c;大大地降低了系统调用的次数。</p> 
+<p>下面介绍一下主要的数据结构&#xff1a;</p> 
+<ol><li>struct sockaddr_nl {<!-- --></li><li>    sa_family_t    nl_family;    /* AF_NETLINK    */</li><li>    unsigned short    nl_pad;        /* zero        */</li><li>    __u32        nl_pid;        /* port ID    */</li><li>   __u32        nl_groups;    /* multicast groups mask */</li><li>};</li></ol> 
+<p>说明&#xff1a;&#xff08;1&#xff09;        sa_family_t      nl_family;         </p> 
+<p>      一般为AF_NETLINK&#xff0c;</p> 
+<p>&#xff08;2&#xff09;       unsigned short         nl_pad;</p> 
+<p> 字段 nl_pad 当前没有使用&#xff0c;因此要总是设置为 0&#xff0c;</p> 
+<p>&#xff08;3&#xff09;__u32              nl_pid;              </p> 
+<p> 绑定时用于指定绑定者的进程号&#xff0c;发送消息时用于指定接收进程号&#xff0c;如果希望内核处理多播消息&#xff0c;就把该字段设置为 0&#xff0c;否则设置为处理消息的进程 ID。传递给 bind 函数的地址的 nl_pid 字段应当设置为本进程的进程 ID&#xff0c;这相当于 netlink socket 的本地地址。但是&#xff0c;对于一个netlink socket 的情况&#xff0c;字段nl_pid 则可以设置为其它的值&#xff0c;如&#xff1a;</p> 
+<p>pthread_self() &lt;&lt; 16 | getpid();</p> 
+<p>因此字段 nl_pid 实际上未必是进程 ID,它只是用于区分不同的接收者或发送者的一个标识&#xff0c;用户可以根据自己需要设置该字段。</p> 
+<p>&#xff08;4&#xff09;   __u32                 nl_groups;</p> 
+<p>    绑定时用于指定绑定者所要加入的多播组&#xff0c;这样绑定者就可以接收多播消息&#xff0c;发送 消息时可以用于指定多播组&#xff0c;这样就可以将消息发给多个接收者。这里nl_groups 为32位的无符号整形&#xff0c;所以可以指定32个多播组&#xff0c;每个进程可以加入多个多播组&#xff0c; 因为多播组是通过“或”操作&#xff0c;如果设置为 0&#xff0c;表示调用者不加入任何多播组。这里就是Netlink多播的概念&#xff01;和通信中的多播概念有点类似。</p> 
+<p> </p> 
+<p> </p> 
+<p> </p> 
+<p>Netlink是一种内核层与应用层通信的一种机制&#xff0c;比如说在做一个内核模块的时候&#xff0c;往往会需要应用层提供一些配置信息&#xff0c;这时候就可以使用netlink。netlink包括内核层和应用层&#xff0c;内核层注册一个netlink协议&#xff0c;然后定义一些消息类型&#xff0c;之后就可以等待来自应用层的消息了。这篇博文给出一个简单的netlink内核模块使用例子&#xff0c;应用层会在接下来的博文中给出。</p> 
+<p>内核版本&#xff1a;3.4.39。 不同内核版本可能带来编译问题&#xff0c;可以升级内核来解决。升级3.4.39内核可以参考这一篇博客(https://blog.csdn.net/fuyuande/article/details/79429441)</p> 
+<p>netlink 内核端代码如下&#xff1a;nlkernel.c</p> 
+<p><br />  </p> 
+<p>/*<br />  *  Description : 内核netlink编程<br />  *  Date        &#xff1a;20180528<br />  *  Author      &#xff1a;mason<br />  *  Mail        : mrsonko&#64;126.com<br />  *<br />  */<br /> #include &lt;linux/kernel.h&gt;<br /> #include &lt;linux/module.h&gt;<br /> #include &lt;linux/init.h&gt;<br /> #include &lt;linux/netlink.h&gt;<br /> #include &lt;linux/netfilter.h&gt;<br /> #include &lt;linux/netfilter_ipv4.h&gt;<br /> #include &lt;net/ip.h&gt;<br /> #include &#34;nlkernel.h&#34;<br />  <br /> static int number;<br /> static struct sock *nlsock &#61; NULL;  // netlink 套接字<br />  <br /> // netlink消息回复&#xff0c;用于向应用层传递数据<br /> static void netlink_sendto_userapp(unsigned int dst_pid) {<!-- --><br />     struct sk_buff *skb &#61; NULL;<br />     struct nlmsghdr *nlh &#61; NULL;<br />     int datalen;<br />     int *pnum;<br />     datalen &#61; NLMSG_SPACE(sizeof(int));<br />  <br />     skb &#61; alloc_skb(datalen, GFP_KERNEL);<br />     if(!skb)<br />     {<!-- --><br />         log(&#34;alloc skb error.\r\n&#34;);<br />         return ;<br />     }<br />     // 数据初始化<br />     nlh &#61; nlmsg_put(skb, 0, 0, 0, sizeof(int), 0);<br />     nlh-&gt;nlmsg_pid &#61; 0;<br />     nlh-&gt;nlmsg_type &#61; NLKERNEL_GET;<br />     <br />     pnum &#61; (int *)NLMSG_DATA(nlh);<br />     *pnum &#61; number;    <br />     netlink_unicast(nlsock, skb, dst_pid, MSG_DONTWAIT);<br />     log(&#34;netlink send done \r\n&#34;);<br />     <br />     return;    <br /> }<br />  <br /> /* netlink消息处理函数 */<br /> static int netlink_kernel_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh)<br /> {<!-- --><br />     int *value &#61; NULL;<br />     switch(nlh-&gt;nlmsg_type){<!-- --><br />         // 设置<br />         case NLKERNEL_SET :<br />             log(&#34;kernel receive netlink set msg!\r\n&#34;);<br />             value &#61; (int *)NLMSG_DATA(nlh);            <br />             number &#61; *value;<br />             break;<br />         // 获取<br />         case NLKERNEL_GET :<br />             log(&#34;kernel receive netlink get msg!\r\n&#34;);<br />             netlink_sendto_userapp(nlh-&gt;nlmsg_pid);<br />             break;<br />         default:<br />             log(&#34;unrecognized netlink message type : %u \r\n&#34;,nlh-&gt;nlmsg_type);<br />             break;<br />     }   <br />     return 0;<br /> }   <br />  <br />  <br />  <br />  <br /> static void netlink_kernel_rcv(struct sk_buff *skb)<br /> {<!-- --><br />     int res;<br />     res &#61; netlink_rcv_skb(skb, &amp;netlink_kernel_rcv_msg);<br />     return;<br /> }<br />  <br />  <br />  <br />  <br /> // 模块入口函数<br /> static int __init nlkernel_init(void) {<!-- --><br />     log(&#34;nlkernel init \r\n&#34;);<br />     // 注册netlink协议<br />     nlsock &#61; netlink_kernel_create(&amp;init_net, NETLINK_TEST_MODULE, 0, netlink_kernel_rcv, NULL, THIS_MODULE);<br />     if (!nlsock) {<!-- --><br />         log(&#34;netlink module init fail \r\n&#34;);<br />         return -1;<br />     }<br />     return 0;<br /> }<br />  <br />  <br /> // 模块退出函数<br /> static void __exit nlkernel_exit(void) {<!-- --><br />     // 注销netlink协议<br />     if(nlsock)<br />     {<!-- --><br />         netlink_kernel_release(nlsock);<br />         nlsock &#61; NULL;<br />     }<br />     log(&#34;nlkernel exit \r\n&#34;);<br />     return ;<br /> }<br />  <br /> module_init(nlkernel_init)<br /> module_exit(nlkernel_exit)<br /> MODULE_AUTHOR(&#34;mason&#34;);<br /> MODULE_DESCRIPTION(&#34;netlink kernel test&#34;);<br /> MODULE_LICENSE(&#34;GPL&#34;);<br />  <br />  </p> 
+<p>nlkernel.h</p> 
+<p>#ifndef __NLKERNEL_H__<br /> #define __NLKERNEL_H__<br /> #define log(fmt, arg...)  printk(KERN_INFO&#34;[bfd] %s:%d &#34;fmt, __FUNCTION__, __LINE__, ##arg)<br />  <br /> #ifndef NIPQUAD<br /> #define NIPQUAD(addr) \<br />     ((unsigned char *)&amp;addr)[0], \<br />     ((unsigned char *)&amp;addr)[1], \<br />     ((unsigned char *)&amp;addr)[2], \<br />     ((unsigned char *)&amp;addr)[3]<br /> #endif<br />  <br /> #define NETLINK_TEST_MODULE         17      /* 定义 netlink 协议&#xff0c; */<br />  <br /> typedef enum netlink_msg_type {             /* 定义 netlink 消息类型 */<br />     NLKERNEL_GET &#61; NLMSG_MIN_TYPE &#43;1,        /* value : 17 */<br />     NLKERNEL_SET,                            /* value : 18 */<br />  <br />     NLKERNEL_END,<br /> }NETLINK_MSG_TYPE;<br />  <br /> #endif</p> 
+<p> </p> 
+<p>Makefile&#xff1a;</p> 
+<p>obj-m :&#61; nlkernel.o<br />  <br /> PWD :&#61; $(shell pwd)<br /> KERNEL_DIR :&#61; &#34;/usr/src/linux-headers-&#34;$(shell uname -r)/<br />  <br /> modules:<br />     &#64;$(MAKE) -C $(KERNEL_DIR) M&#61;$(PWD) modules<br /> clean:<br />     &#64;rm -rf *.ko *.o *.mod.c *symvers *order *cmd<br />  </p> 
+<p> </p> 
+<p>代码托管在github 上&#xff1a;</p> 
+<p>git&#64;github.com:FuYuanDe/nlnetlink.git</p> 
+<p> </p> 
+<p>编译完成后加载模块查看效果&#xff1a;</p> 
+<p>insmod nlkernel.ko</p> 
+<p>dmesg</p> 
+<p> </p> 
+<p> </p> 
+<p> </p> 
+<p><a href="http://blog.chinaunix.net/uid-20357359-id-1963608.html" rel="nofollow">linux下检测网卡与网线连通状态</a></p> 
+<p> </p> 
+<p>Linux下检测网卡与网线连接状态&#xff0c;使用ioctl向socket发送<code>SIOCETHTOOL</code><code>命令字。</code><br /><br /> link_stat.c</p> 
+<table align="center"><tbody><tr><td><code>#include &lt;stdio.h&gt;<br /> #include &lt;stdlib.h&gt;<br /> #include &lt;string.h&gt;<br /><br /> #include &lt;fcntl.h&gt;<br /> #include &lt;errno.h&gt;<br /> #include &lt;sys/ioctl.h&gt;<br /><br /> #include &lt;sys/types.h&gt;<br /> #include &lt;sys/socket.h&gt;<br /> #include &lt;linux/if.h&gt;<br /> #include &lt;linux/sockios.h&gt;<br /> #include &lt;linux/ethtool.h&gt;<br /><br /> int get_netlink_status(const char *if_name);<br /><br /> int main()<br /> {<!-- --><br />     if(getuid() !&#61; 0)<br />     {<!-- --><br />         fprintf(stderr, &#34;Netlink Status Check Need Root Power.\n&#34;);<br />         return 1;<br />     }<br />     <br />     printf(&#34;Net link status: %d\n&#34;, get_netlink_status(&#34;eth0&#34;));<br /><br />     return 0;<br /> }<br /><br /> // if_name like &#34;ath0&#34;, &#34;eth0&#34;. Notice: call this function<br /> // need root privilege.<br /> // return value:<br /> // -1 -- error , details can check errno<br /> // 1 -- interface link up<br /> // 0 -- interface link down.<br /> int get_netlink_status(const char *if_name)<br /> {<!-- --><br />     int skfd;<br />     struct ifreq ifr;<br />     struct ethtool_value edata;<br /><br />     edata.cmd &#61; ETHTOOL_GLINK;<br />     edata.data &#61; 0;<br /><br />     memset(&amp;ifr, 0, sizeof(ifr));<br />     strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name) - 1);<br />     ifr.ifr_data &#61; (char *) &amp;edata;<br /><br />     if (( skfd &#61; socket( AF_INET, SOCK_DGRAM, 0 )) &lt; 0)<br />         return -1;<br /><br />     if(ioctl( skfd, SIOCETHTOOL, &amp;ifr ) &#61;&#61; -1)<br />     {<!-- --><br />         close(skfd);<br />         return -1;<br />     }<br /><br />     close(skfd);<br />     return edata.data;<br /> }</code></td></tr></tbody></table> 
+<p> </p> 
+<p> </p> 
+<p>之前有一篇文章《<a href="http://www.cpplive.com/html/1362.html" rel="nofollow">Netlink实现Linux内核与用户空间通信</a>》专门介绍了Netlink相比其他内核交互方式的优点以及Netlink的调用方法&#xff0c;并以NETLINK_KOBJECT_UEVENT&#xff08;内核事件向用户态通知&#xff09;为例演示了U盘热插拔信息的捕捉&#xff0c;衍生出另一篇文章《<a href="http://www.cpplive.com/html/1355.html" rel="nofollow">Linux下自动检测USB热插拔</a>》&#xff0c;今天尝试用Netlink来捕捉一下网络接口信息&#xff0c;实现的主要功能是实时打印发生变化的网络接口的序列号、上下线状态和接口名称。    </p> 
+<p>为了创建一个 netlink socket&#xff0c;用户需要使用如下参数调用 socket():</p> 
+<p> </p> 
+<ol><li>#include &lt;sys/types.h&gt;  </li><li>#include &lt;sys/socket.h&gt;  </li><li>#include &lt;asm/types.h&gt;  </li><li>#include &lt;linux/netlink.h&gt;  </li><li>#include &lt;linux/rtnetlink.h&gt;  </li><li>#include &lt;stdlib.h&gt;  </li><li>#include &lt;stdio.h&gt;  </li><li>#include &lt;sys/ioctl.h&gt;  </li><li>#include &lt;linux/if.h&gt;  </li><li>#include &lt;string.h&gt;  </li><li>  </li><li>#define BUFLEN 20480  </li><li>  </li><li>int main(int argc, char *argv[])  </li><li>{  </li><li>    int fd, retval;  </li><li>    char buf[BUFLEN] &#61; {0};  </li><li>    int len &#61; BUFLEN;  </li><li>    struct sockaddr_nl addr;  </li><li>    struct nlmsghdr *nh;  </li><li>    struct ifinfomsg *ifinfo;  </li><li>    struct rtattr *attr;  </li><li>  </li><li>    fd &#61; socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);  </li><li>    setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &amp;len, sizeof(len));  </li><li>    memset(&amp;addr, 0, sizeof(addr));  </li><li>    addr.nl_family &#61; AF_NETLINK;  </li><li>    addr.nl_groups &#61; RTNLGRP_LINK;  </li><li>    bind(fd, (struct sockaddr*)&amp;addr, sizeof(addr));  </li><li>    while ((retval &#61; read(fd, buf, BUFLEN)) &gt; 0)  </li><li>    {  </li><li>        for (nh &#61; (struct nlmsghdr *)buf; NLMSG_OK(nh, retval); nh &#61; NLMSG_NEXT(nh, retval))  </li><li>        {  </li><li>            if (nh-&gt;nlmsg_type &#61;&#61; NLMSG_DONE)  </li><li>                break;  </li><li>            else if (nh-&gt;nlmsg_type &#61;&#61; NLMSG_ERROR)  </li><li>                return;  </li><li>            else if (nh-&gt;nlmsg_type !&#61; RTM_NEWLINK)  </li><li>                continue;  </li><li>            ifinfo &#61; NLMSG_DATA(nh);  </li><li>            printf(&#34;%u: %s&#34;, ifinfo-&gt;ifi_index,  </li><li>                    (ifinfo-&gt;ifi_flags &amp; IFF_LOWER_UP) ? &#34;up&#34; : &#34;down&#34; );  </li><li>            attr &#61; (struct rtattr*)(((char*)nh) &#43; NLMSG_SPACE(sizeof(*ifinfo)));  </li><li>            len &#61; nh-&gt;nlmsg_len - NLMSG_SPACE(sizeof(*ifinfo));  </li><li>            for (; RTA_OK(attr, len); attr &#61; RTA_NEXT(attr, len))  </li><li>            {  </li><li>                if (attr-&gt;rta_type &#61;&#61; IFLA_IFNAME)  </li><li>                {  </li><li>                    printf(&#34; %s&#34;, (char*)RTA_DATA(attr));  </li><li>                    break;  </li><li>                }  </li><li>            }  </li><li>            printf(&#34;\n&#34;);  </li><li>        }  </li><li>    }  </li><li>  </li><li>    return 0;  </li><li>}  </li></ol> 
+<p> </p> 
+<p> </p> 
+<p> </p> 
+<p> </p> 
+<p> </p> 
+<p><a href="https://github.com/FuYuanDe/nlnetlink">https://github.com/FuYuanDe/nlnetlink</a></p> 
+<p> </p> 
+<p>转载&#xff1a;</p> 
+<p><a href="https://blog.csdn.net/fuyuande/article/details/80489988">https://blog.csdn.net/fuyuande/article/details/80489988</a></p> 
+<p><a href="https://blog.csdn.net/zcabcd123/article/details/8272423">https://blog.csdn.net/zcabcd123/article/details/8272423</a></p> 
+<p><a href="https://blog.csdn.net/sourthstar/article/details/7975999">https://blog.csdn.net/sourthstar/article/details/7975999</a></p> 
+<p><a href="http://blog.chinaunix.net/uid-20357359-id-1963608.html?page&#61;2" rel="nofollow">http://blog.chinaunix.net/uid-20357359-id-1963608.html?page&#61;2</a></p>
+                </div>
+        </div>
+    </article>
+  <script>
+    $(function() {
+      setTimeout(function () {
+        var mathcodeList = document.querySelectorAll('.htmledit_views img.mathcode');
+        if (mathcodeList.length > 0) {
+          for (let i = 0; i < mathcodeList.length; i++) {
+            if (mathcodeList[i].complete) {
+              if (mathcodeList[i].naturalWidth === 0 || mathcodeList[i].naturalHeight === 0) {
+                var alt = mathcodeList[i].alt;
+                alt = '\\(' + alt + '\\)';
+                var curSpan = $('<span class="img-codecogs"></span>');
+                curSpan.text(alt);
+                $(mathcodeList[i]).before(curSpan);
+                $(mathcodeList[i]).remove();
+              }
+            } else {
+              mathcodeList[i].onerror = function() {
+                var alt = mathcodeList[i].alt;
+                alt = '\\(' + alt + '\\)';
+                var curSpan = $('<span class="img-codecogs"></span>');
+                curSpan.text(alt);
+                $(mathcodeList[i]).before(curSpan);
+                $(mathcodeList[i]).remove();
+              };
+            }
+          }
+          MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+        }
+      }, 500)
+    });
+  </script>
+</div>
+<div class="directory-boxshadow-dialog" style="display:none;">
+  <div class="directory-boxshadow-dialog-box">
+  </div>
+   <div class="vip-limited-time-offer-box-new" id="vip-limited-time-offer-box-new">
+      <img class="limited-img limited-img-new" src="https://csdnimg.cn/release/blogv2/dist/pc/img/vip-limited-close-newWhite.png">
+      <div class="vip-limited-time-top">
+        确定要放弃本次机会？
+      </div>
+      <span class="vip-limited-time-text">福利倒计时</span>
+      <div class="limited-time-box-new">
+        <span class="time-hour"></span>
+        <i>:</i>
+        <span class="time-minite"></span>
+        <i>:</i>
+        <span class="time-second"></span>
+      </div>
+      <div class="limited-time-vip-box">
+        <p>
+          <img class="coupon-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/vip-limited-close-roup.png">
+          <span class="def">立减 ¥</span>
+          <span class="active limited-num"></span>
+        </p>
+        <span class="">普通VIP年卡可用</span>
+      </div>
+      <a class="limited-time-btn-new" href="https://mall.csdn.net/vip" data-report-click='{"spm":"1001.2101.3001.9621"}' data-report-query='spm=1001.2101.3001.9621'>立即使用</a>
+  </div>
+</div>
+    <div class="more-toolbox-new more-toolbar" id="toolBarBox">
+      <div class="left-toolbox">
+        <div class="toolbox-left">
+            <div class="profile-box">
+              <a class="profile-href" target="_blank" href="https://blog.csdn.net/shanandqiu"><img class="profile-img" src="https://profile-avatar.csdnimg.cn/default.jpg!1">
+                <span class="profile-name">
+                  shanandqiu
+                </span>
+              </a>
+            </div>
+            <div class="profile-attend">
+                <a class="tool-attend tool-bt-button tool-bt-attend" href="javascript:;" data-report-view='{"mod":"1592215036_002","spm":"1001.2101.3001.4232","extend1":"关注"}'>关注</a>
+              <a class="tool-item-follow active-animation" style="display:none;">关注</a>
+            </div>
+        </div>
+        <div class="toolbox-middle">
+          <ul class="toolbox-list">
+            <li class="tool-item tool-item-size tool-active is-like" id="is-like">
+              <a class="tool-item-href">
+                <img style="display:none;" id="is-like-imgactive-animation-like" class="animation-dom active-animation" src="https://csdnimg.cn/release/blogv2/dist/pc/img/tobarThumbUpactive.png" alt="">
+                <img class="isactive" style="display:none" id="is-like-imgactive" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/like-active.png" alt="">
+                <img class="isdefault" style="display:block" id="is-like-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/like.png" alt="">
+                <span id="spanCount" class="count ">
+                      0
+                </span>
+              </a>
+              <div class="tool-hover-tip"><span class="text space">点赞</span></div>
+            </li>
+            <li class="tool-item tool-item-size tool-active is-unlike" id="is-unlike">
+              <a class="tool-item-href">
+                <img class="isactive" style="margin-right:0px;display:none" id="is-unlike-imgactive" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/unlike-active.png" alt="">
+                <img class="isdefault" style="margin-right:0px;display:block" id="is-unlike-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/unlike.png" alt="">
+                <span id="unlikeCount" class="count "></span>
+              </a>
+              <div class="tool-hover-tip"><span class="text space">踩</span></div>
+            </li>
+            <li class="tool-item tool-item-size tool-active is-collection ">
+              <a class="tool-item-href" href="javascript:;" data-report-click='{"mod":"popu_824","spm":"1001.2101.3001.4130","ab":"new"}'>
+                <img style="display:none" id="is-collection-img-collection" class="animation-dom active-animation" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/collect-active.png" alt="">
+                <img class="isdefault" id="is-collection-img" style="display:block" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/collect.png" alt="">
+                <img class="isactive" id="is-collection-imgactive" style="display:none" src="https://csdnimg.cn/release/blogv2/dist/pc/img/newCollectActive.png" alt="">
+                <span class="count get-collection " data-num="5" id="get-collection">
+                    5
+                </span>
+              </a>
+              <div class="tool-hover-tip collect">
+                <div class="collect-operate-box">
+                  <span class="collect-text" id="is-collection">
+                    收藏
+                  </span>
+                </div>
+              </div>
+              <div class="tool-active-list">
+                <div class="text">
+                  觉得还不错?
+                  <span class="collect-text" id="tool-active-list-collection">
+                    一键收藏
+                  </span>
+                 <img id="tool-active-list-close" src="https://csdnimg.cn/release/blogv2/dist/pc/img/collectionCloseWhite.png" alt="">
+                </div>
+              </div>
+            </li>
+            <li class="tool-item tool-item-size tool-active tool-item-comment">
+              <div class="guide-rr-first">
+                <img src="https://csdnimg.cn/release/blogv2/dist/pc/img/guideRedReward01.png" alt="">
+                <button class="btn-guide-known">知道了</button>
+              </div>
+                <a class="tool-item-href" href="#commentBox" data-report-click='{"spm":"1001.2101.3001.7009"}'>
+                <img class="isdefault" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/comment.png" alt="">
+                <span class="count">
+                      0
+                </span>
+              </a>
+              <div class="tool-hover-tip"><span class="text space">评论</span></div>
+            </li>
+            <li class="tool-item tool-item-size tool-active tool-QRcode" data-type="article" id="tool-share">
+              <a class="tool-item-href" href="javascript:;" data-report-view='{"spm":"3001.4129","extra":{"type":"blogdetail"}}'>
+                <img class="isdefault" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/share.png" alt="">
+                <span class="count">分享</span>
+              </a>
+                <div class="QRcode" id="tool-QRcode">
+                <div class="share-bg-box">
+                  <div class="share-content">
+                    <a id="copyPosterUrl" data-type="link" class="btn-share">复制链接</a>
+                  </div>
+                  <div class="share-content">
+                    <a class="btn-share" data-type="qq">分享到 QQ</a>
+                  </div>
+                  <div class="share-content">
+                    <a class="btn-share" data-type="weibo">分享到新浪微博</a>
+                  </div>
+                  <div class="share-code">
+                    <div class="share-code-box" id='shareCode'></div>
+                    <div class="share-code-text">
+                      <img src="https://csdnimg.cn/release/blogv2/dist/pc/img/share/icon-wechat.png" alt="">扫一扫
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          <li class="tool-item tool-item-size tool-active is-more" id="is-more">
+            <a class="tool-item-href">
+              <img class="isdefault" style="margin-right:0px;display:block" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/more.png" alt="">
+              <span class="count"></span>
+            </a>
+            <div class="more-opt-box">
+              <div class="mini-box">
+                <a class="tool-item-href" id="toolReportBtnHide">
+                  <img class="isdefault" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/report.png" alt="">
+                  <span class="count">举报</span>
+                </a>
+              </div>
+              <div class="normal-box">
+                <a class="tool-item-href" id="toolReportBtnHideNormal">
+                  <img class="isdefault" src="https://csdnimg.cn/release/blogv2/dist/pc/img/toolbar/report.png" alt="">
+                  <span class="count">举报</span>
+                </a>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="toolbox-right">
+</div>
+</div>
+</div>
+<script type=text/javascript crossorigin src="https://csdnimg.cn/release/phoenix/production/qrcode-7c90a92189.min.js"></script>
+<script type="text/javascript" crossorigin src="https://g.csdnimg.cn/common/csdn-login-box/csdn-login-box.js"></script>
+<script type="text/javascript" crossorigin src="https://g.csdnimg.cn/collection-box/2.1.2/collection-box.js"></script>                <div class="first-recommend-box recommend-box ">
+<div class="recommend-item-box type_download clearfix" data-url="https://download.csdn.net/download/weixin_38603704/12843257"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6661.1","mod":"popu_871","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant_t0.none-task-download-2~default~BlogCommendFromBaidu~Rate-1-12843257-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"1","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/weixin_38603704/12843257"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://download.csdn.net/download/weixin_38603704/12843257" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6661.1","mod":"popu_871","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant_t0.none-task-download-2~default~BlogCommendFromBaidu~Rate-1-12843257-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"1","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/weixin_38603704/12843257"}'  data-report-query='spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-1-12843257-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant_t0.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-1-12843257-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>linux</em>下用户程序同内核<em>通信</em><em>详解</em>（<em>netlink</em><em>机制</em>）</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info display-flex">
+					<span class="info-block">09-15</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://download.csdn.net/download/weixin_38603704/12843257" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6661.1","mod":"popu_871","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant_t0.none-task-download-2~default~BlogCommendFromBaidu~Rate-1-12843257-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"1","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/weixin_38603704/12843257"}'  data-report-query='spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-1-12843257-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant_t0.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-1-12843257-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">主要介绍了<em>linux</em>下用户程序同内核<em>通信</em><em>详解</em>（<em>netlink</em><em>机制</em>），涉及<em>netlink</em>，内核模块，用户程序的介绍等相关内容，小编觉得还是挺不错的，这里分享给大家，需要的朋友可以参考下</div>
+			</a>
+		</div>
+	</div>
+</div>
+                </div>
+            <script src="https://csdnimg.cn/release/blogv2/dist/components/js/pc_wap_commontools-a1b42bf722.min.js" type="text/javascript" async></script>
+              <div class="second-recommend-box recommend-box ">
+<div class="recommend-item-box type_blog clearfix" data-url="https://devpress.csdn.net/v1/article/detail/51581979"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.1","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~activity-1-51581979-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"1","strategy":"2~default~BlogCommendFromBaidu~activity","dest":"https://devpress.csdn.net/v1/article/detail/51581979"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://devpress.csdn.net/v1/article/detail/51581979" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.1","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~activity-1-51581979-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"1","strategy":"2~default~BlogCommendFromBaidu~activity","dest":"https://devpress.csdn.net/v1/article/detail/51581979"}'  data-report-query='spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-1-51581979-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-1-51581979-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Linux</em>-内核<em>通信</em>之<em>netlink</em><em>机制</em>-<em>详解</em></div>
+					<div class="tag">热门推荐</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/sty23122555" target="_blank"><span class="blog-title">逝去的浪花</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">06-05</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					2万+
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://devpress.csdn.net/v1/article/detail/51581979" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.1","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~activity-1-51581979-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"1","strategy":"2~default~BlogCommendFromBaidu~activity","dest":"https://devpress.csdn.net/v1/article/detail/51581979"}'  data-report-query='spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-1-51581979-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-1-51581979-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">前言：
+开发和维护内核是一件很繁杂的工作，因此，只有那些最重要或者与系统性能息息相关的代码才将其安排在内核中。其它程序，比如GUI，管理以及控制部分的代码，一般都会作为用户态程序。用户态和内核态的通讯<em>机制</em>IPC(interprocess&nbsp;
+ &nbsp;communication&nbsp;&nbsp;)<em>机制</em>：比如系统调用，ioctl接口，proc文件系统以及<em>netlink</em> socket。
+介绍：
+<em>netlink</em> so</div>
+			</a>
+		</div>
+	</div>
+</div>
+              </div>
+<a id="commentBox" name="commentBox"></a>
+  <div id="pcCommentBox" class="comment-box comment-box-new2 unlogin-comment-box-new" style="display:none">
+      <div class="unlogin-comment-model">
+          <span class="unlogin-comment-tit">参与评论</span>
+        <span class="unlogin-comment-text">您还未登录，请先</span>
+        <span class="unlogin-comment-bt">登录</span>
+        <span class="unlogin-comment-text">后发表或查看评论</span>
+      </div>
+  </div>
+              <div class="recommend-box insert-baidu-box recommend-box-style ">
+                <div class="recommend-item-box no-index" style="display:none"></div>
+<div class="recommend-item-box type_download clearfix" data-url="https://download.csdn.net/download/rufanfou/8318125"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.2","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~BlogCommendFromBaidu~Rate-2-8318125-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"2","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/rufanfou/8318125"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://download.csdn.net/download/rufanfou/8318125" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.2","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~BlogCommendFromBaidu~Rate-2-8318125-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"2","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/rufanfou/8318125"}'  data-report-query='spm=1001.2101.3001.6650.2&utm_medium=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-2-8318125-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-2-8318125-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>linux</em>中与内核<em>通信</em>的<em>Netlink</em><em>机制</em></div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info display-flex">
+					<span class="info-block">12-31</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://download.csdn.net/download/rufanfou/8318125" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.2","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~BlogCommendFromBaidu~Rate-2-8318125-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"2","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/rufanfou/8318125"}'  data-report-query='spm=1001.2101.3001.6650.2&utm_medium=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-2-8318125-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-2-8318125-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">本文主要介绍<em>linux</em>中内核态与用户态<em>通信</em>的<em>netlink</em><em>机制</em>。介绍了<em>netlink</em>的程序流程，特点，和具体实现代码</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/weixin_39094034/article/details/110955222"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.3","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-3-110955222-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"3","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_39094034/article/details/110955222"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/weixin_39094034/article/details/110955222" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.3","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-3-110955222-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"3","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_39094034/article/details/110955222"}'  data-report-query='spm=1001.2101.3001.6650.3&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-3-110955222-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-3-110955222-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1">内核<em>通信</em>之<em>Netlink</em>源码分析-用户内核<em>通信</em>原理</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/weixin_39094034" target="_blank"><span class="blog-title">weixin_39094034的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">12-12</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					503
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/weixin_39094034/article/details/110955222" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.3","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-3-110955222-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"3","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_39094034/article/details/110955222"}'  data-report-query='spm=1001.2101.3001.6650.3&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-3-110955222-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-3-110955222-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">本节从一个小案例入手，结合源码分析下通过<em>netlink</em>进行内核和用户<em>通信</em>的流程。
+
+内核端
+
+按照传统CS模式，其实内核端可以作为是服务器端，用以接收用户的请求并作出处理，但是从<em>netlink</em>本身的特性，其更像是一个对等实体。双方都可以进行主动数据的传递。
+
+内核中首先调用<em>netlink</em>_kernel_create函数创建一个sock结构，其实这里仅仅是返回一个sock结构，而其中创建了相关的socket,<em>netlink</em>_sock,inode等。
+
+
+
+老版本的函数参数都是写在<em>netlink</em>_kernel.</div>
+			</a>
+		</div>
+	</div>
+</div>
+		<dl id="recommend-item-box-tow" class="recommend-item-box type_blog clearfix">
+			
+		</dl>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/weixin_42238049/article/details/119820727"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.4","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-4-119820727-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"4","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_42238049/article/details/119820727"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/weixin_42238049/article/details/119820727" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.4","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-4-119820727-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"4","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_42238049/article/details/119820727"}'  data-report-query='spm=1001.2101.3001.6650.4&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-4-119820727-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-4-119820727-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>netlink</em>实现与使用方法<em>详解</em>（用户态/内核态）</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/weixin_42238049" target="_blank"><span class="blog-title">weixin_42238049的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">08-20</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					1万+
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/weixin_42238049/article/details/119820727" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.4","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-4-119820727-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"4","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_42238049/article/details/119820727"}'  data-report-query='spm=1001.2101.3001.6650.4&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-4-119820727-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-4-119820727-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">一、什么是<em>netlink</em>
+<em>Netlink</em>套接字是用以实现用户进程与内核进程<em>通信</em>的一种特殊的进程间<em>通信</em>(IPC) ,也是网络应用程序与内核<em>通信</em>的最常用的接口。
+在<em>Linux</em> 内核中，使用<em>netlink</em> 进行应用与内核<em>通信</em>的应用有很多，如
+路由 daemon（<em>NETLINK</em>_ROUTE）
+用户态 socket 协议（<em>NETLINK</em>_USERSOCK）
+防火墙（<em>NETLINK</em>_FIREWALL）
+netfilter 子系统（<em>NETLINK</em>_NETFILTER）
+内核事件向用户态<em>通知</em>（<em>NETLINK</em>_KOBJECT</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/weixin_39620653/article/details/111719737"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.5","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~OPENSEARCH~Rate-5-111719737-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"5","strategy":"2~default~OPENSEARCH~Rate","dest":"https://blog.csdn.net/weixin_39620653/article/details/111719737"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/weixin_39620653/article/details/111719737" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.5","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~OPENSEARCH~Rate-5-111719737-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"5","strategy":"2~default~OPENSEARCH~Rate","dest":"https://blog.csdn.net/weixin_39620653/article/details/111719737"}'  data-report-query='spm=1001.2101.3001.6650.5&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-5-111719737-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-5-111719737-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1">af_<em>netlink</em>_<em>Linux</em> <em>Netlink</em><em>通信</em><em>机制</em><em>详解</em>（上）</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/weixin_39620653" target="_blank"><span class="blog-title">weixin_39620653的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">12-20</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					1217
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/weixin_39620653/article/details/111719737" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.5","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~OPENSEARCH~Rate-5-111719737-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"5","strategy":"2~default~OPENSEARCH~Rate","dest":"https://blog.csdn.net/weixin_39620653/article/details/111719737"}'  data-report-query='spm=1001.2101.3001.6650.5&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-5-111719737-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-5-111719737-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">前面有一篇文章其实已经介绍过<em>Netlink</em>方面的知识，还有一个内核和用户空间之间的一个交互例子，这篇文章主要是更细节和基础的知识介绍！<em>Netlink</em>是一种特殊的socket，它是<em>Linux</em>所特有的，由于传送的消息是暂存在socket接收缓存中，并不被接收者立即处理，所以<em>netlink</em>是一种<em>异步</em><em>通信</em><em>机制</em>。系统调用和ioctl则是同步<em>通信</em><em>机制</em>。用户空间进程可以通过标准socketAPI来实现消息的发...</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_c_download clearfix" data-url="https://wenku.csdn.net/doc/109sehumth"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.6","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-c_download-2~default~OPENSEARCH~Rate-6-109sehumth-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"6","strategy":"2~default~OPENSEARCH~Rate","dest":"https://wenku.csdn.net/doc/109sehumth"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://wenku.csdn.net/doc/109sehumth" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.6","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-c_download-2~default~OPENSEARCH~Rate-6-109sehumth-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"6","strategy":"2~default~OPENSEARCH~Rate","dest":"https://wenku.csdn.net/doc/109sehumth"}'  data-report-query='spm=1001.2101.3001.6650.6&utm_medium=distribute.pc_relevant.none-task-c_download-2%7Edefault%7EOPENSEARCH%7ERate-6-109sehumth-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-c_download-2%7Edefault%7EOPENSEARCH%7ERate-6-109sehumth-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Netlink</em><em>通信</em><em>机制</em><em>详解</em>与实例展示</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info display-flex">
+					<span class="info-block"></span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://wenku.csdn.net/doc/109sehumth" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.6","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-c_download-2~default~OPENSEARCH~Rate-6-109sehumth-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"6","strategy":"2~default~OPENSEARCH~Rate","dest":"https://wenku.csdn.net/doc/109sehumth"}'  data-report-query='spm=1001.2101.3001.6650.6&utm_medium=distribute.pc_relevant.none-task-c_download-2%7Edefault%7EOPENSEARCH%7ERate-6-109sehumth-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-c_download-2%7Edefault%7EOPENSEARCH%7ERate-6-109sehumth-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">- <em>netlink</em><em>通信</em>可以实现一对一或多对多的<em>通信</em>方式，它是一种<em>异步</em>的消息传递方式，可以支持跨进程<em>通信</em>，甚至可以在不同的处理单元之间进行消息传递。 - 使用<em>netlink</em>可以减少用户空间与内核空间的交互次数，因为它能够...</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/ACMIII/article/details/134284108"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.7","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~OPENSEARCH~Rate-7-134284108-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"7","strategy":"2~default~OPENSEARCH~Rate","dest":"https://blog.csdn.net/ACMIII/article/details/134284108"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/ACMIII/article/details/134284108" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.7","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~OPENSEARCH~Rate-7-134284108-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"7","strategy":"2~default~OPENSEARCH~Rate","dest":"https://blog.csdn.net/ACMIII/article/details/134284108"}'  data-report-query='spm=1001.2101.3001.6650.7&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-7-134284108-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-7-134284108-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Linux</em>中的<em>Netlink</em><em>详解</em></div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/ACMIII" target="_blank"><span class="blog-title">ACMIII的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">11-08</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					855
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/ACMIII/article/details/134284108" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.7","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~OPENSEARCH~Rate-7-134284108-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"7","strategy":"2~default~OPENSEARCH~Rate","dest":"https://blog.csdn.net/ACMIII/article/details/134284108"}'  data-report-query='spm=1001.2101.3001.6650.7&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-7-134284108-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EOPENSEARCH%7ERate-7-134284108-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">下面是一个更详细的内核<em>Netlink</em>代码示例，包括内核模块的初始化和退出函数，<em>Netlink</em>套接字的创建和消息处理函数。该示例代码实现了一个简单的内核模块，通过<em>Netlink</em>与用户空间进行<em>通信</em>，将接收到的消息打印到内核日志中。在这个示例代码中，我们首先创建了一个<em>Netlink</em>套接字，并将其绑定到指定的地址上。然后，我们构造了一个<em>Netlink</em>消息，将用户空间的消息内容复制到消息缓冲区中，并通过。对于<em>Netlink</em>来说，地址由。以下是一个详细的用户空间代码示例，用于与上述内核模块中的<em>Netlink</em>进行<em>通信</em>。</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_download clearfix" data-url="https://download.csdn.net/download/qq_36237430/10532132"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.8","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~OPENSEARCH~Rate-8-10532132-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"8","strategy":"2~default~OPENSEARCH~Rate","dest":"https://download.csdn.net/download/qq_36237430/10532132"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://download.csdn.net/download/qq_36237430/10532132" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.8","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~OPENSEARCH~Rate-8-10532132-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"8","strategy":"2~default~OPENSEARCH~Rate","dest":"https://download.csdn.net/download/qq_36237430/10532132"}'  data-report-query='spm=1001.2101.3001.6650.8&utm_medium=distribute.pc_relevant.none-task-download-2%7Edefault%7EOPENSEARCH%7ERate-8-10532132-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-download-2%7Edefault%7EOPENSEARCH%7ERate-8-10532132-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Linux</em>中<em>netlink</em>工信<em>机制</em><em>详解</em></div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info display-flex">
+					<span class="info-block">07-10</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://download.csdn.net/download/qq_36237430/10532132" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.8","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~OPENSEARCH~Rate-8-10532132-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"8","strategy":"2~default~OPENSEARCH~Rate","dest":"https://download.csdn.net/download/qq_36237430/10532132"}'  data-report-query='spm=1001.2101.3001.6650.8&utm_medium=distribute.pc_relevant.none-task-download-2%7Edefault%7EOPENSEARCH%7ERate-8-10532132-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-download-2%7Edefault%7EOPENSEARCH%7ERate-8-10532132-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">关于网络设备中<em>netlink</em><em>通信</em><em>机制</em><em>详解</em>，主要为代码主题的实现</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://devpress.csdn.net/v1/article/detail/103583769"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.9","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~activity-9-103583769-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"9","strategy":"2~default~BlogCommendFromBaidu~activity","dest":"https://devpress.csdn.net/v1/article/detail/103583769"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://devpress.csdn.net/v1/article/detail/103583769" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.9","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~activity-9-103583769-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"9","strategy":"2~default~BlogCommendFromBaidu~activity","dest":"https://devpress.csdn.net/v1/article/detail/103583769"}'  data-report-query='spm=1001.2101.3001.6650.9&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-9-103583769-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-9-103583769-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>linux</em>内核与用户空间<em>通信</em><em>机制</em>&mdash;&mdash;<em>Netlink</em><em>通信</em></div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/weixin_39094034" target="_blank"><span class="blog-title">weixin_39094034的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">12-18</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					2722
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://devpress.csdn.net/v1/article/detail/103583769" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.9","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~activity-9-103583769-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"9","strategy":"2~default~BlogCommendFromBaidu~activity","dest":"https://devpress.csdn.net/v1/article/detail/103583769"}'  data-report-query='spm=1001.2101.3001.6650.9&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-9-103583769-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-9-103583769-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">可以参考这个链接的文章了解：https://blog.<em>csdn</em>.net/zhao_h/article/details/80943226
+
+  <em>netlink</em>是一种用于内核态和用户态进程之间进行数据传输的特殊的IPC<em>机制</em>。它的特点是：
+（1） 用户态采用socket风格的API
+（2）除了预定义的协议类型之外，支持自定义协议类型
+（3）<em>异步</em>通讯
+（4）支持消息组播
+（5）全双工（特别是支持内核...</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_download clearfix" data-url="https://download.csdn.net/download/summer3058/3466536"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.10","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~BlogCommendFromBaidu~Rate-10-3466536-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"10","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/summer3058/3466536"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://download.csdn.net/download/summer3058/3466536" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.10","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~BlogCommendFromBaidu~Rate-10-3466536-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"10","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/summer3058/3466536"}'  data-report-query='spm=1001.2101.3001.6650.10&utm_medium=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-10-3466536-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-10-3466536-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>linux</em>内核态与用户态<em>通信</em>-<em>netlink</em>实例解析</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info display-flex">
+					<span class="info-block">07-24</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://download.csdn.net/download/summer3058/3466536" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.10","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-download-2~default~BlogCommendFromBaidu~Rate-10-3466536-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"10","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://download.csdn.net/download/summer3058/3466536"}'  data-report-query='spm=1001.2101.3001.6650.10&utm_medium=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-10-3466536-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-download-2%7Edefault%7EBlogCommendFromBaidu%7ERate-10-3466536-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1"><em>linux</em>内核态与用户态<em>通信</em><em>机制</em>-<em>netlink</em>，有实例解析+源码，推荐~</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/weixin_42271802/article/details/135034711"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.11","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-11-135034711-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"11","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_42271802/article/details/135034711"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/weixin_42271802/article/details/135034711" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.11","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-11-135034711-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"11","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_42271802/article/details/135034711"}'  data-report-query='spm=1001.2101.3001.6650.11&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-11-135034711-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-11-135034711-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Netlink</em><em>通信</em></div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/weixin_42271802" target="_blank"><span class="blog-title">weixin_42271802的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">12-16</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					1116
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/weixin_42271802/article/details/135034711" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.11","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-11-135034711-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"11","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/weixin_42271802/article/details/135034711"}'  data-report-query='spm=1001.2101.3001.6650.11&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-11-135034711-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-11-135034711-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1"><em>Netlink</em> 是 <em>Linux</em> 内核与用户空间进程之间进行<em>通信</em>的<em>机制</em>之一</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/m0_50662680/article/details/127771641"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.12","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-12-127771641-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"12","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/m0_50662680/article/details/127771641"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/m0_50662680/article/details/127771641" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.12","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-12-127771641-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"12","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/m0_50662680/article/details/127771641"}'  data-report-query='spm=1001.2101.3001.6650.12&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-12-127771641-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-12-127771641-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Linux</em>用户空间与内核空间<em>通信</em>(<em>Netlink</em><em>通信</em><em>机制</em>)</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/m0_50662680" target="_blank"><span class="blog-title">嵌入式Linux内核的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">11-09</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					1985
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/m0_50662680/article/details/127771641" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.12","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-12-127771641-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"12","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/m0_50662680/article/details/127771641"}'  data-report-query='spm=1001.2101.3001.6650.12&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-12-127771641-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-12-127771641-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1"><em>Netlink</em>是<em>linux</em>提供的用于内核和用户态进程之间的<em>通信</em>方式。但是注意虽然<em>Netlink</em>主要用于用户空间和内核空间的<em>通信</em>，但是也能用于用户空间的两个进程<em>通信</em>。只是进程间<em>通信</em>有其他很多方式，一般不用<em>Netlink</em>。除非需要用到<em>Netlink</em>的广播特性时。那么<em>Netlink</em>有什么优势呢？一般来说用户空间和内核空间的<em>通信</em>方式有三种：/proc、ioctl、<em>Netlink</em>。而前两种都是单向的，但是<em>Netlink</em>可以实现双工<em>通信</em>。</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/bingyang_xue/article/details/4729689"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.13","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-13-4729689-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"13","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/bingyang_xue/article/details/4729689"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/bingyang_xue/article/details/4729689" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.13","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-13-4729689-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"13","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/bingyang_xue/article/details/4729689"}'  data-report-query='spm=1001.2101.3001.6650.13&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-13-4729689-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-13-4729689-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>LINUX</em> <em>netlink</em><em>机制</em></div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/bingyang_xue" target="_blank"><span class="blog-title">bingyang_xue的专栏</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">10-26</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					871
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/bingyang_xue/article/details/4729689" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.13","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-13-4729689-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"13","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/bingyang_xue/article/details/4729689"}'  data-report-query='spm=1001.2101.3001.6650.13&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-13-4729689-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-13-4729689-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1"><em>Netlink</em> 是一种特殊的 socket，它是 <em>Linux</em> 所特有的，类似于 BSD 中的AF_ROUTE 但又远比它的功能强大，目前在最新的 <em>Linux</em> 内核（2.6.14）中使用<em>netlink</em> 进行应用与内核<em>通信</em>的应用很多，包括：路由 daemon（<em>NETLINK</em>_ROUTE），1-wire 子系统（<em>NETLINK</em>_W1），用户态 socket 协议（<em>NETLINK</em>_USERSOCK），防火</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://sampson.blog.csdn.net/article/details/104406788"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.14","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-14-104406788-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"14","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://sampson.blog.csdn.net/article/details/104406788"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://sampson.blog.csdn.net/article/details/104406788" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.14","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-14-104406788-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"14","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://sampson.blog.csdn.net/article/details/104406788"}'  data-report-query='spm=1001.2101.3001.6650.14&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-14-104406788-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-14-104406788-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Linux</em>基础入门--内核与用户<em>通信</em>--<em>Netlink</em></div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/qq_20677327" target="_blank"><span class="blog-title">香蕉一号</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">02-21</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					397
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://sampson.blog.csdn.net/article/details/104406788" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.14","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-14-104406788-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"14","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://sampson.blog.csdn.net/article/details/104406788"}'  data-report-query='spm=1001.2101.3001.6650.14&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-14-104406788-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-14-104406788-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1"><em>Linux</em>基础入门--内核与用户<em>通信</em>--<em>Netlink</em>1.概述2.其他<em>通信</em><em>机制</em>的不足3.解决<em>机制</em>4.优点5.<em>通信</em>流程6.用户态
+1.概述
+为了完成内核空间与用 户空间<em>通信</em>，<em>Linux</em>提供了基于socket的<em>Netlink</em><em>通信</em><em>机制</em>，可以实现内核与用户空间数据的及时交换。到目前<em>Linux</em>提供了9种<em>机制</em>完成内核与用户空间的数据交换，分别是内核启动参数、模块参数与 sysfs、sysctl、系统调用、ne...</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/squiffy/article/details/7046963"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.15","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-15-7046963-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"15","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/squiffy/article/details/7046963"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/squiffy/article/details/7046963" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.15","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-15-7046963-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"15","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/squiffy/article/details/7046963"}'  data-report-query='spm=1001.2101.3001.6650.15&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-15-7046963-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-15-7046963-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>netlink</em>---<em>Linux</em>下基于socket的内核和上层<em>通信</em><em>机制</em>（上）</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/squiffy" target="_blank"><span class="blog-title">squiffy的专栏</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">12-06</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					3623
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/squiffy/article/details/7046963" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.15","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-15-7046963-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"15","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/squiffy/article/details/7046963"}'  data-report-query='spm=1001.2101.3001.6650.15&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-15-7046963-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-15-7046963-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">我最近有一个项目需求，需要在<em>linux</em>网卡驱动中加入一个自己的驱动，实现在内核态完成一些报文处理（这个过程可以实现一种零COPY的网络报文截获），对于复杂报文COPY下必要的数据交给用户态来完成（因为过于复杂的报文消耗CPU太大，会导致中断占用时间太长）。因此需要一种内核和用户态配合的<em>通信</em><em>机制</em>，尝试了很多方式都不太理想，最后采用<em>netlink</em>+内存映射的模式很好的解决了这个问题。<em>Netlink</em>是一</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/sinat_32152141/article/details/129885359"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.16","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-16-129885359-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"16","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/sinat_32152141/article/details/129885359"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/sinat_32152141/article/details/129885359" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.16","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-16-129885359-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"16","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/sinat_32152141/article/details/129885359"}'  data-report-query='spm=1001.2101.3001.6650.16&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-16-129885359-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-16-129885359-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Linux</em> <em>netlink</em>示例&mdash;&mdash;监测网络网卡up/down和IP变化</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/sinat_32152141" target="_blank"><span class="blog-title">sinat_32152141的博客</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">06-16</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					2262
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/sinat_32152141/article/details/129885359" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.16","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-16-129885359-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"16","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/sinat_32152141/article/details/129885359"}'  data-report-query='spm=1001.2101.3001.6650.16&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-16-129885359-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-16-129885359-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">【代码】<em>Linux</em> <em>netlink</em>示例&mdash;&mdash;监测网络网卡up/down和IP变化。</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://blog.csdn.net/u011456016/article/details/136380410"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.17","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-17-136380410-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"17","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/u011456016/article/details/136380410"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://blog.csdn.net/u011456016/article/details/136380410" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.17","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-17-136380410-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"17","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/u011456016/article/details/136380410"}'  data-report-query='spm=1001.2101.3001.6650.17&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-17-136380410-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-17-136380410-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>Linux</em>设备模型(七) - <em>Netlink</em></div>
+					<div class="tag">最新发布</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/u011456016" target="_blank"><span class="blog-title">滴水藏海</span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">02-29</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					1429
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://blog.csdn.net/u011456016/article/details/136380410" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.17","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-17-136380410-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"17","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://blog.csdn.net/u011456016/article/details/136380410"}'  data-report-query='spm=1001.2101.3001.6650.17&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-17-136380410-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-17-136380410-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1"><em>Netlink</em>套接字是用以实现用户进程与内核进程<em>通信</em>的一种特殊的进程间<em>通信</em>(IPC) ,也是网络应用程序与内核<em>通信</em>的最常用的接口。<em>Netlink</em> 是一种特殊的 socket，它是 <em>Linux</em> 所特有的。<em>Netlink</em> 是一种在内核与用户应用间进行双向数据传输的非常好的方式，用户态应用使用标准的 socket API 就可以使用 <em>netlink</em> 提供的强大功能，内核态需要使用专门的内核 API 来使用 <em>netlink</em>。</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="recommend-item-box type_blog clearfix" data-url="https://wangquan.blog.csdn.net/article/details/122865413"  data-report-view='{"ab":"new","spm":"1001.2101.3001.6650.18","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-18-122865413-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"18","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://wangquan.blog.csdn.net/article/details/122865413"}'>
+	<div class="content-box">
+		<div class="content-blog display-flex">
+			<div class="title-box">
+				<a href="https://wangquan.blog.csdn.net/article/details/122865413" class="tit" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.18","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-18-122865413-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"18","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://wangquan.blog.csdn.net/article/details/122865413"}'  data-report-query='spm=1001.2101.3001.6650.18&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-18-122865413-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-18-122865413-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+					<div class="left ellipsis-online ellipsis-online-1"><em>linux</em> <em>netlink</em>实现<em>机制</em>：注册、创建</div>
+				</a>
+			</div>
+			<div class="info-box display-flex">
+				<div class="info">
+					<a href="https://blog.csdn.net/wangquan1992" target="_blank"><span class="blog-title"></span></a>
+				</div>
+				<div class="info display-flex">
+					<span class="info-block time">02-10</span>
+					<span class="info-block read"><img class="read-img" src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					2617
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="desc-box">
+			<a href="https://wangquan.blog.csdn.net/article/details/122865413" target="_blank"  data-report-click='{"ab":"new","spm":"1001.2101.3001.6650.18","mod":"popu_387","extra":"{\"highlightScore\":0.0,\"utm_medium\":\"distribute.pc_relevant.none-task-blog-2~default~BlogCommendFromBaidu~Rate-18-122865413-blog-115351654.235^v43^pc_blog_bottom_relevance_base2\",\"dist_request_id\":\"1741829789060_59803\"}","dist_request_id":"1741829789060_59803","ab_strategy":"landing_bge_commercial_hanlp","index":"18","strategy":"2~default~BlogCommendFromBaidu~Rate","dest":"https://wangquan.blog.csdn.net/article/details/122865413"}'  data-report-query='spm=1001.2101.3001.6650.18&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-18-122865413-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-18-122865413-blog-115351654.235%5Ev43%5Epc_blog_bottom_relevance_base2'>
+				<div class="desc ellipsis-online ellipsis-online-1">目录
+
+1 <em>netlink</em> 概述
+
+2 <em>Netlink</em>子系统初始化
+
+3 内核<em>Netlink</em>套接字
+
+3.1 内核<em>netlink</em>配置结构：struct <em>netlink</em>_kernel_cfg
+
+3.2 <em>netlink</em>属性头：struct nlattr
+
+3.3 <em>netlink</em>有效性策略：struct nla_policy
+
+3.4 <em>netlink</em>套接字结构：<em>netlink</em>_sock
+
+3.5 创建内核<em>netlink</em>套接字
+
+4 应用层 <em>Netlink</em> 套接字
+
+4.1 套接字地址数据结构 sockaddr_n</div>
+			</a>
+		</div>
+	</div>
+</div>
+              </div>
+<div class="blog-footer-bottom" style="margin-top:10px;"></div>
+<script src="https://g.csdnimg.cn/common/csdn-footer/csdn-footer.js" data-isfootertrack="false" type="text/javascript"></script>
+<script type="text/javascript">
+    window.csdn.csdnFooter.options = {
+        el: '.blog-footer-bottom',
+        type: 2
+    }
+</script>          </main>
+<aside class="blog_container_aside">
+<div id="asideProfile" class="aside-box active">
+    <div class="profile-intro d-flex">
+        <div class="avatar-box d-flex justify-content-center flex-column">
+            <a href="https://blog.csdn.net/shanandqiu" target="_blank" data-report-click='{"mod":"popu_379","spm":"3001.4121","dest":"https://blog.csdn.net/shanandqiu","ab":"new"}'>
+                <img src="https://profile-avatar.csdnimg.cn/default.jpg!1" class="avatar_pic">
+            </a>
+        </div>
+        <div class="user-info d-flex flex-column profile-intro-name-box">
+            <div class="profile-intro-name-boxTop">
+                <a href="https://blog.csdn.net/shanandqiu" target="_blank" class="" id="uid" title="shanandqiu" data-report-click='{"mod":"popu_379","spm":"3001.4122","dest":"https://blog.csdn.net/shanandqiu","ab":"new"}'>
+                    <span class="name" username="shanandqiu">shanandqiu</span>
+                </a>
+            </div>
+            <div class="profile-intro-name-boxFooter-new">
+              <p class="profile-intro-name-leve">
+                <span>
+                  博客等级
+                </span>
+                  <img class="level" src="https://csdnimg.cn/identity/blog4.png">
+              </p>
+                <span class="profile-intro-name-years" title="已加入 CSDN 15年">码龄15年</span>
+               
+            </div>
+        </div>
+    </div>
+    <div class="profile-intro-rank-information">
+      <dl>
+        <a href="https://blog.csdn.net/shanandqiu" data-report-click='{"mod":"1598321000_001","spm":"3001.4310"}' data-report-query="t=1">  
+            <dd><span >35</span></dd>
+            <dt>原创</dt>
+        </a>
+      </dl>
+       <dl title="41">
+        <dd>41</dd>
+        <dt>点赞</dt>
+      </dl>
+       <dl title="252">
+        <dd>252</dd>
+        <dt>收藏</dt>
+      </dl>
+      <dl id="fanBox" title="19">
+        <dd><span id="fan">19</span></dd>
+        <dt>粉丝</dt>
+      </dl>
+    </div>
+    <div class="profile-intro-name-boxOpration">
+        <div class="opt-letter-watch-box"> 
+            <a class="personal-watch bt-button" id="btnAttent" >关注</a>  
+        </div>
+        <div class="opt-letter-watch-box">
+        <a rel="nofollow" class="bt-button personal-letter" href="https://im.csdn.net/chat/shanandqiu" target="_blank" rel="noopener">私信</a>
+        </div>
+    </div>
+</div>
+
+<div class="box-shadow mb8" data-pid="blog" style="min-height:250px;">
+    <div class="aside-content text-center" id="cpro_u2734133">
+        <div id="kp_box_56" data-pid="56"><div class="wwads-cn wwads-vertical" data-id="149" style="max-width:300px;margin-top:10px;background-color: #fff;"></div> 
+<style>.wwads-img img {width: 150px; margin-top:10px}</style><img class="pre-img-lasy" data-src="https://kunyu.csdn.net/1.png?p=56&adId=1066629&adBlockFlag=0&a=1066629&c=0&k=Linux Netlink通信机制详解&spm=1001.2101.3001.5000&articleId=115351654&d=1&t=3&u=ff75ca345a374d409b54fbdfc18bec85" style="display: block;width: 0px;height: 0px;"></div>
+    </div>
+</div>
+
+
+
+<div id="asideHotArticle" class="aside-box">
+	<h3 class="aside-title">热门文章</h3>
+	<div class="aside-content">
+		<ul class="hotArticle-list">
+			<li>
+				<a href="https://blog.csdn.net/shanandqiu/article/details/70859865" target="_blank"  data-report-click='{"mod":"popu_541","spm":"3001.4139","dest":"https://blog.csdn.net/shanandqiu/article/details/70859865","ab":"new"}'>
+				记录1年免费亚马逊AWS云服务器申请方法过程及使用技巧
+					<img src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					<span class="read">34936</span>
+                </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/shanandqiu/article/details/7898565" target="_blank"  data-report-click='{"mod":"popu_541","spm":"3001.4139","dest":"https://blog.csdn.net/shanandqiu/article/details/7898565","ab":"new"}'>
+				shell脚本的exit问题（退出脚本还是退出终端）
+					<img src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					<span class="read">20068</span>
+                </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/shanandqiu/article/details/111994136" target="_blank"  data-report-click='{"mod":"popu_541","spm":"3001.4139","dest":"https://blog.csdn.net/shanandqiu/article/details/111994136","ab":"new"}'>
+				Ubuntu apt iso镜像 本地源配置 以及使用
+					<img src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					<span class="read">11927</span>
+                </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/shanandqiu/article/details/112523494" target="_blank"  data-report-click='{"mod":"popu_541","spm":"3001.4139","dest":"https://blog.csdn.net/shanandqiu/article/details/112523494","ab":"new"}'>
+				Qt和wxWidgets 比较 以及其他GUI库
+					<img src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					<span class="read">6764</span>
+                </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/shanandqiu/article/details/111992367" target="_blank"  data-report-click='{"mod":"popu_541","spm":"3001.4139","dest":"https://blog.csdn.net/shanandqiu/article/details/111992367","ab":"new"}'>
+				errno 介绍
+					<img src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					<span class="read">6741</span>
+                </a>
+			</li>
+		</ul>
+	</div>
+</div>
+<div id="asideCategory" class="aside-box ">
+    <h3 class="aside-title">分类专栏</h3>
+    <div class="aside-content">
+        <ul>
+            <li>
+                <a class="clearfix special-column-name"  href="https://blog.csdn.net/shanandqiu/category_11054529.html" data-report-click='{"mod":"popu_537","spm":"3001.4137","strategy":"pc付费专栏左侧入口","dest":"https://blog.csdn.net/shanandqiu/category_11054529.html","ab":"new"}'>
+                    <div class="special-column-bar "></div>
+                    <img src="https://i-blog.csdnimg.cn/columns/default/20201014180756925.png?x-oss-process=image/resize,m_fixed,h_64,w_64" alt="" onerror="this.src='https://i-blog.csdnimg.cn/columns/default/20201014180756922.png?x-oss-process=image/resize,m_fixed,h_64,w_64'">
+                    <span class="title oneline">
+                        游戏
+                    </span>
+                </a>
+                <span class="special-column-num">1篇</span>
+            </li>
+            <li>
+                <a class="clearfix special-column-name"  href="https://blog.csdn.net/shanandqiu/category_10795361.html" data-report-click='{"mod":"popu_537","spm":"3001.4137","strategy":"pc付费专栏左侧入口","dest":"https://blog.csdn.net/shanandqiu/category_10795361.html","ab":"new"}'>
+                    <div class="special-column-bar "></div>
+                    <img src="https://i-blog.csdnimg.cn/columns/default/20201014180756925.png?x-oss-process=image/resize,m_fixed,h_64,w_64" alt="" onerror="this.src='https://i-blog.csdnimg.cn/columns/default/20201014180756922.png?x-oss-process=image/resize,m_fixed,h_64,w_64'">
+                    <span class="title oneline">
+                        杂记
+                    </span>
+                </a>
+                <span class="special-column-num">1篇</span>
+            </li>
+            <li>
+                <a class="clearfix special-column-name"  href="https://blog.csdn.net/shanandqiu/category_6747028.html" data-report-click='{"mod":"popu_537","spm":"3001.4137","strategy":"pc付费专栏左侧入口","dest":"https://blog.csdn.net/shanandqiu/category_6747028.html","ab":"new"}'>
+                    <div class="special-column-bar "></div>
+                    <img src="https://i-blog.csdnimg.cn/columns/default/20201014180756923.png?x-oss-process=image/resize,m_fixed,h_64,w_64" alt="" onerror="this.src='https://i-blog.csdnimg.cn/columns/default/20201014180756922.png?x-oss-process=image/resize,m_fixed,h_64,w_64'">
+                    <span class="title oneline">
+                        笔记
+                    </span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="asideNewComments" class="aside-box">
+    <h3 class="aside-title">最新评论</h3>
+    <div class="aside-content">
+        <ul class="newcomment-list">
+            <li>
+                <a class="title text-truncate" target="_blank" href="https://blog.csdn.net/shanandqiu/article/details/112523494#comments_27398636" data-report-click='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/112523494#comments_27398636","ab":"new"}' data-report-view='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/112523494#comments_27398636","ab":"new"}'>Qt和wxWidgets 比较 以及其他GUI库</a>
+                <p class="comment ellipsis">
+                    <a href="https://blog.csdn.net/Dev" class="user-name" target="_blank">Dev: </a>
+                    <span class="code-comments">都是照抄，没有自己用过的体会，建议这两学过了再评。</span>
+                </p>
+            </li>
+            <li>
+                <a class="title text-truncate" target="_blank" href="https://blog.csdn.net/shanandqiu/article/details/112523494#comments_26082920" data-report-click='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/112523494#comments_26082920","ab":"new"}' data-report-view='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/112523494#comments_26082920","ab":"new"}'>Qt和wxWidgets 比较 以及其他GUI库</a>
+                <p class="comment ellipsis">
+                    <a href="https://blog.csdn.net/u010540844" class="user-name" target="_blank">香草味灬布丁: </a>
+                    <span class="code-comments">通篇废话</span>
+                </p>
+            </li>
+            <li>
+                <a class="title text-truncate" target="_blank" href="https://blog.csdn.net/shanandqiu/article/details/7898565#comments_25670070" data-report-click='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/7898565#comments_25670070","ab":"new"}' data-report-view='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/7898565#comments_25670070","ab":"new"}'>shell脚本的exit问题（退出脚本还是退出终端）</a>
+                <p class="comment ellipsis">
+                    <a href="https://blog.csdn.net/grossbier" class="user-name" target="_blank">大杯啤酒: </a>
+                    <span class="code-comments">哈哈朋友厉害！</span>
+                </p>
+            </li>
+            <li>
+                <a class="title text-truncate" target="_blank" href="https://blog.csdn.net/shanandqiu/article/details/115206426#comments_25280254" data-report-click='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/115206426#comments_25280254","ab":"new"}' data-report-view='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/115206426#comments_25280254","ab":"new"}'>ELF 格式详解</a>
+                <p class="comment ellipsis">
+                    <a href="https://blog.csdn.net/NightIsDark" class="user-name" target="_blank">NightIsDark: </a>
+                    <span class="code-comments">请教下楼主，图是用什么工具画的呀？画的好</span>
+                </p>
+            </li>
+            <li>
+                <a class="title text-truncate" target="_blank" href="https://blog.csdn.net/shanandqiu/article/details/7898565#comments_25268350" data-report-click='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/7898565#comments_25268350","ab":"new"}' data-report-view='{"mod":"popu_542","spm":"3001.4231","dest":"https://blog.csdn.net/shanandqiu/article/details/7898565#comments_25268350","ab":"new"}'>shell脚本的exit问题（退出脚本还是退出终端）</a>
+                <p class="comment ellipsis">
+                    <a href="https://blog.csdn.net/weixin_62992843" class="user-name" target="_blank">fai巴嘎: </a>
+                    <span class="code-comments">朋友，你的失误就是我要找的方法，哈哈哈误打误撞，谢谢啦</span>
+                </p>
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="asideHotArticle" class="aside-box">
+	<h3 class="aside-title">大家在看</h3>
+	<div class="aside-content">
+		<ul class="hotArticle-list">
+			<li>
+				<a href="https://blog.csdn.net/kexiaoya2013/article/details/146219191" target="_blank"  data-report-click='{"spm":"3001.10093","dest":"https://blog.csdn.net/kexiaoya2013/article/details/146219191","strategy":"202_1052723-2531945_RCMD","ab":"new"}' data-report-view='{"spm":"3001.10093","dest":"https://blog.csdn.net/kexiaoya2013/article/details/146219191","strategy":"202_1052723-2531945_RCMD","ab":"new"}'>
+				论文中自己写的内容会被标红吗？
+        </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/2401_85026116/article/details/146221888" target="_blank"  data-report-click='{"spm":"3001.10093","dest":"https://blog.csdn.net/2401_85026116/article/details/146221888","strategy":"202_1052723-2532136_RCMD","ab":"new"}' data-report-view='{"spm":"3001.10093","dest":"https://blog.csdn.net/2401_85026116/article/details/146221888","strategy":"202_1052723-2532136_RCMD","ab":"new"}'>
+				【2025年】CTF夺旗赛-从零基础入门到竞赛，看这一篇就稳了！
+        </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/m0_75156154/article/details/146216189" target="_blank"  data-report-click='{"spm":"3001.10093","dest":"https://blog.csdn.net/m0_75156154/article/details/146216189","strategy":"202_1052723-2531982_RCMD","ab":"new"}' data-report-view='{"spm":"3001.10093","dest":"https://blog.csdn.net/m0_75156154/article/details/146216189","strategy":"202_1052723-2531982_RCMD","ab":"new"}'>
+				基于尼古拉特斯拉的369理论设计的一个电力系统猜测和设计方案
+					<img src="https://csdnimg.cn/release/blogv2/dist/pc/img/readCountWhite.png" alt="">
+					<span class="read">225</span>
+        </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/qq_36603091/article/details/146221132" target="_blank"  data-report-click='{"spm":"3001.10093","dest":"https://blog.csdn.net/qq_36603091/article/details/146221132","strategy":"202_1052723-2532133_RCMD","ab":"new"}' data-report-view='{"spm":"3001.10093","dest":"https://blog.csdn.net/qq_36603091/article/details/146221132","strategy":"202_1052723-2532133_RCMD","ab":"new"}'>
+				128K超长上下文多语言多模态Gemma 3发布，单卡AI性能显著提升！27B超越DeepSeek-V3 可在单块 GPU 上运行的最强 AI 模型
+        </a>
+			</li>
+			<li>
+				<a href="https://blog.csdn.net/huayula/article/details/146194841" target="_blank"  data-report-click='{"spm":"3001.10093","dest":"https://blog.csdn.net/huayula/article/details/146194841","strategy":"202_1052723-2531896_RCMD","ab":"new"}' data-report-view='{"spm":"3001.10093","dest":"https://blog.csdn.net/huayula/article/details/146194841","strategy":"202_1052723-2531896_RCMD","ab":"new"}'>
+				AI一键生成微信红包封面系统源码
+        </a>
+			</li>
+		</ul>
+	</div>
+</div>
+<div id="asideArchive" class="aside-box" style="display:block!important; width:300px;">
+    <h3 class="aside-title">最新文章</h3>
+    <div class="aside-content">
+        <ul class="inf_list clearfix">
+            <li class="clearfix">
+            <a href="https://blog.csdn.net/shanandqiu/article/details/120777750" target="_blank" data-report-click='{"mod":"popu_382","spm":"3001.4136","dest":"https://blog.csdn.net/shanandqiu/article/details/120777750","ab":"new"}' data-report-view='{"mod":"popu_382","dest":"https://blog.csdn.net/shanandqiu/article/details/120777750","ab":"new"}'>centos rpm包安装</a>
+            </li>
+            <li class="clearfix">
+            <a href="https://blog.csdn.net/shanandqiu/article/details/120534517" target="_blank" data-report-click='{"mod":"popu_382","spm":"3001.4136","dest":"https://blog.csdn.net/shanandqiu/article/details/120534517","ab":"new"}' data-report-view='{"mod":"popu_382","dest":"https://blog.csdn.net/shanandqiu/article/details/120534517","ab":"new"}'>linux grub 启动项</a>
+            </li>
+            <li class="clearfix">
+            <a href="https://blog.csdn.net/shanandqiu/article/details/120542422" target="_blank" data-report-click='{"mod":"popu_382","spm":"3001.4136","dest":"https://blog.csdn.net/shanandqiu/article/details/120542422","ab":"new"}' data-report-view='{"mod":"popu_382","dest":"https://blog.csdn.net/shanandqiu/article/details/120542422","ab":"new"}'>2021-09-29</a>
+            </li>
+        </ul>
+        <div class="archive-bar"></div>
+        <div class="archive-box">
+                <div class="archive-list-item"><a href="https://blog.csdn.net/shanandqiu?type=blog&amp;year=2021&amp;month=10" target="_blank" data-report-click='{"mod":"popu_538","spm":"3001.4138","ab":"new","dest":"https://blog.csdn.net/shanandqiu?type=blog&amp;year=2021&amp;month=10"}'><span class="year">2021年</span><span class="num">68篇</span></a></div>
+                <div class="archive-list-item"><a href="https://blog.csdn.net/shanandqiu?type=blog&amp;year=2020&amp;month=12" target="_blank" data-report-click='{"mod":"popu_538","spm":"3001.4138","ab":"new","dest":"https://blog.csdn.net/shanandqiu?type=blog&amp;year=2020&amp;month=12"}'><span class="year">2020年</span><span class="num">7篇</span></a></div>
+                <div class="archive-list-item"><a href="https://blog.csdn.net/shanandqiu?type=blog&amp;year=2017&amp;month=05" target="_blank" data-report-click='{"mod":"popu_538","spm":"3001.4138","ab":"new","dest":"https://blog.csdn.net/shanandqiu?type=blog&amp;year=2017&amp;month=05"}'><span class="year">2017年</span><span class="num">8篇</span></a></div>
+                <div class="archive-list-item"><a href="https://blog.csdn.net/shanandqiu?type=blog&amp;year=2013&amp;month=09" target="_blank" data-report-click='{"mod":"popu_538","spm":"3001.4138","ab":"new","dest":"https://blog.csdn.net/shanandqiu?type=blog&amp;year=2013&amp;month=09"}'><span class="year">2013年</span><span class="num">19篇</span></a></div>
+                <div class="archive-list-item"><a href="https://blog.csdn.net/shanandqiu?type=blog&amp;year=2012&amp;month=10" target="_blank" data-report-click='{"mod":"popu_538","spm":"3001.4138","ab":"new","dest":"https://blog.csdn.net/shanandqiu?type=blog&amp;year=2012&amp;month=10"}'><span class="year">2012年</span><span class="num">12篇</span></a></div>
+        </div>
+    </div>
+</div>
+	<div id="footerRightAds" class="isShowFooterAds">
+		<div class="aside-box">
+			<div id="kp_box_57" data-pid="57"><iframe  src="https://kunpeng-sc.csdnimg.cn/?timestamp=1645783940/#/preview/2374205?positionId=57&adBlockFlag=0&adId=1065695&queryWord=Linux Netlink通信机制详解&spm=1001.2101.3001.5001&articleId=115351654" frameborder="0" width= "300px"  height= "600px" scrolling="no" ></iframe><img class="pre-img-lasy"  data-src="https://kunyu.csdn.net/1.png?p=57&adBlockFlag=0&adId=1065695&a=1065695&c=2374205&k=Linux Netlink通信机制详解&spm=1001.2101.3001.5001&articleId=115351654&d=1&t=3&u=8ea2aee007f54f449b90809cd2ed48db" style="display: block;width: 0px;height: 0px;"></div>
+		</div>
+	</div>
+    <!-- 详情页显示目录 -->
+<!--文章目录-->
+<div id="asidedirectory" class="aside-box">
+    <div class='groupfile' id="directory">
+        <h3 class="aside-title">目录</h3>
+        <div class="align-items-stretch group_item">
+            <div class="pos-box">
+            <div class="scroll-box">
+                <div class="toc-box"></div>
+            </div>
+            </div>
+        </div>
+    </div>
+</div>
+</aside>
+<script>
+	$("a.flexible-btn").click(function(){
+		$(this).parents('div.aside-box').removeClass('flexible-box');
+		$(this).parents("p.text-center").remove();
+	})
+</script>
+<script type="text/javascript"  src="https://g.csdnimg.cn/user-tooltip/2.7/user-tooltip.js"></script>
+<script type="text/javascript"  src="https://g.csdnimg.cn/user-medal/2.0.0/user-medal.js"></script>        </div>
+<div class="recommend-right align-items-stretch clearfix" id="rightAside" data-type="recommend">
+    <aside class="recommend-right_aside">
+      <div class="rightside-fixed-hide">
+                       <div class="programmer1Box">
+                    <div id="kp_box_530" data-pid="530"><iframe  src="https://kunpeng-sc.csdnimg.cn/?timestamp=1645783940/#/preview/2416361?positionId=530&adBlockFlag=0&adId=1066478&queryWord=Linux Netlink通信机制详解&spm=1001.2101.3001.4647&articleId=115351654" frameborder="0" width= "300px"  height= "600px" scrolling="no" ></iframe><img class="pre-img-lasy"  data-src="https://kunyu.csdn.net/1.png?p=530&adBlockFlag=0&adId=1066478&a=1066478&c=2416361&k=Linux Netlink通信机制详解&spm=1001.2101.3001.4647&articleId=115351654&d=1&t=3&u=b0720303ed6343b69c5fd86602312849" style="display: block;width: 0px;height: 0px;"></div>
+                </div>
+      </div>
+        <div id="recommend-right" >
+          <div class='flex-column aside-box groupfile' id="groupfile">
+              <div class="groupfile-div">
+              <h3 class="aside-title">目录</h3>
+              <div class="align-items-stretch group_item">
+                  <div class="pos-box">
+                      <div class="scroll-box">
+                          <div class="toc-box"></div>
+                      </div>
+                  </div>
+              </div>
+              </div>
+          </div>
+              <div id="recommendAdBox">
+                  <div id="kp_box_479" data-pid="479"><div class="wwads-cn wwads-vertical" data-id="149" style="max-width:300px;margin-top:10px;margin-bottom:10px;background-color: #fff;"></div> 
+<style>.wwads-img img {width: 150px; margin-top:10px}</style>
+<script type="text/javascript" charset="UTF-8" src="https://cdn.wwads.cn/js/makemoney.js" async></script><img class="pre-img-lasy" data-src="https://kunyu.csdn.net/1.png?p=479&adId=1049278&adBlockFlag=0&a=1049278&c=0&k=Linux Netlink通信机制详解&spm=1001.2101.3001.4834&articleId=115351654&d=1&t=3&u=02c82fb72e2a453bbc5b2028d9e47e64" style="display: block;width: 0px;height: 0px;"></div>
+              </div>
+          <div class='aside-box kind_person d-flex flex-column'>
+                  <h3 class="aside-title">分类专栏</h3>
+                  <div class="align-items-stretch kindof_item" id="kind_person_column">
+                      <div class="aside-content">
+                          <ul>
+                              <li>
+                                  <a class="clearfix special-column-name"  href="https://blog.csdn.net/shanandqiu/category_11054529.html" data-report-click='{"mod":"popu_537","spm":"1001.2101.3001.4137","strategy":"pc付费专栏左侧入口","dest":"https://blog.csdn.net/shanandqiu/category_11054529.html","ab":"new"}'>
+                                      <div class="special-column-bar "></div>
+                                      <img src="https://i-blog.csdnimg.cn/columns/default/20201014180756925.png?x-oss-process=image/resize,m_fixed,h_64,w_64" alt="" onerror="this.src='https://i-blog.csdnimg.cn/columns/default/20201014180756922.png?x-oss-process=image/resize,m_fixed,h_64,w_64'">
+                                      <span class="">
+                                          游戏
+                                      </span>
+                                  </a>
+                                  <span class="special-column-num">1篇</span>
+                              </li>
+                              <li>
+                                  <a class="clearfix special-column-name"  href="https://blog.csdn.net/shanandqiu/category_10795361.html" data-report-click='{"mod":"popu_537","spm":"1001.2101.3001.4137","strategy":"pc付费专栏左侧入口","dest":"https://blog.csdn.net/shanandqiu/category_10795361.html","ab":"new"}'>
+                                      <div class="special-column-bar "></div>
+                                      <img src="https://i-blog.csdnimg.cn/columns/default/20201014180756925.png?x-oss-process=image/resize,m_fixed,h_64,w_64" alt="" onerror="this.src='https://i-blog.csdnimg.cn/columns/default/20201014180756922.png?x-oss-process=image/resize,m_fixed,h_64,w_64'">
+                                      <span class="">
+                                          杂记
+                                      </span>
+                                  </a>
+                                  <span class="special-column-num">1篇</span>
+                              </li>
+                              <li>
+                                  <a class="clearfix special-column-name"  href="https://blog.csdn.net/shanandqiu/category_6747028.html" data-report-click='{"mod":"popu_537","spm":"1001.2101.3001.4137","strategy":"pc付费专栏左侧入口","dest":"https://blog.csdn.net/shanandqiu/category_6747028.html","ab":"new"}'>
+                                      <div class="special-column-bar "></div>
+                                      <img src="https://i-blog.csdnimg.cn/columns/default/20201014180756923.png?x-oss-process=image/resize,m_fixed,h_64,w_64" alt="" onerror="this.src='https://i-blog.csdnimg.cn/columns/default/20201014180756922.png?x-oss-process=image/resize,m_fixed,h_64,w_64'">
+                                      <span class="">
+                                          笔记
+                                      </span>
+                                  </a>
+                              </li>
+                          </ul>
+                      </div>
+                  </div>
+          </div>
+        </div>
+    </aside>
+</div>
+
+<div class="recommend-right1  align-items-stretch clearfix" id="rightAsideConcision" data-type="recommend">
+    <aside class="recommend-right_aside">
+        <div id="recommend-right-concision" >
+            <div class='flex-column aside-box groupfile' id="groupfileConcision">
+                <div class="groupfile-div1">
+                <h3 class="aside-title">目录</h3>
+                <div class="align-items-stretch group_item">
+                    <div class="pos-box">
+                        <div class="scroll-box">
+                            <div class="toc-box"></div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+      </div>
+      <div class="mask-dark"></div>
+        <script type="text/javascript">
+        var timert = setInterval(function() {
+          sideToolbar = $(".csdn-side-toolbar");
+          if (sideToolbar.length > 0) {
+            sideToolbar.css('cssText', 'bottom:64px !important;')
+            clearInterval(timert);
+          }
+        }, 200);
+        </script>
+      <div class="skin-boxshadow"></div>
+      <div class="directory-boxshadow"></div>
+<div class="comment-side-box-shadow comment-side-tit-close" id="commentSideBoxshadow">
+<div class="comment-side-content">
+	<div class="comment-side-tit">
+		<span class="comment-side-tit-count">评论</span>	
+	<img class="comment-side-tit-close" src="https://csdnimg.cn/release/blogv2/dist/pc/img/closeBt.png"></div>
+	<div id="pcCommentSideBox" class="comment-box comment-box-new2 unlogin-comment-box-new" style="display:none">
+	</div>
+	<div id="pcFlodCommentSideBox" class="pc-flodcomment-sidebox">
+		<div class="comment-fold-tit"><span id="lookUnFlodComment" class="back"><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/commentArrowLeftWhite.png" alt=""></span>被折叠的&nbsp;<span class="count"></span>&nbsp;条评论
+		 <a href="https://blogdev.blog.csdn.net/article/details/122245662" class="tip" target="_blank">为什么被折叠?</a>
+		 <a href="https://bbs.csdn.net/forums/FreeZone" class="park" target="_blank">
+		 <img src="https://csdnimg.cn/release/blogv2/dist/pc/img/iconPark.png">到【灌水乐园】发言</a>                                
+		</div>
+		<div class="comment-fold-content"></div>
+		<div id="lookBadComment" class="look-bad-comment side-look-comment">
+			<a class="look-more-comment">查看更多评论<img src="https://csdnimg.cn/release/blogv2/dist/pc/img/commentArrowDownWhite.png" alt=""></a>
+		</div>
+	</div>
+</div>
+<div class="comment-rewarddialog-box">
+  <div class="form-box">
+    <div class="title-box">
+      添加红包
+      <a class="btn-form-close"></a>
+    </div>
+    <form id="commentRewardForm">
+      <div class="ipt-box">
+        <label for="txtName">祝福语</label>
+        <div class="ipt-btn-box">
+          <input type="text" name="name" id="txtName" autocomplete="off" maxlength="50">
+          <a class="btn-ipt btn-random"></a>
+        </div>
+        <p class="notice">请填写红包祝福语或标题</p>
+      </div>
+      <div class="ipt-box">
+        <label for="txtSendAmount">红包数量</label>
+        <div class="ipt-txt-box">
+          <input type="text" name="sendAmount" maxlength="4" id="txtSendAmount" placeholder="请填写红包数量(最小10个)" autocomplete="off">
+          <span class="after-txt">个</span>
+        </div>
+        <p class="notice">红包个数最小为10个</p>
+      </div>
+      <div class="ipt-box">
+        <label for="txtMoney">红包总金额</label>
+        <div class="ipt-txt-box error">
+          <input type="text" name="money" maxlength="5" id="txtMoney" placeholder="请填写总金额(最低5元)" autocomplete="off">
+          <span class="after-txt">元</span>
+        </div>
+        <p class="notice">红包金额最低5元</p>
+      </div>
+      <div class="balance-info-box">
+        <label>余额支付</label>
+        <div class="balance-info">
+          当前余额<span class="balance">3.43</span>元
+          <a href="https://i.csdn.net/#/wallet/balance/recharge" class="link-charge" target="_blank">前往充值 ></a>
+        </div>
+      </div>
+      <div class="opt-box">
+        <div class="pay-info">
+          需支付：<span class="price">10.00</span>元
+        </div>
+        <button type="button" class="ml-auto btn-cancel">取消</button>
+        <button type="button" class="ml8 btn-submit" disabled="true">确定</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="rr-guide-box">
+  <div class="rr-first-box">
+    <img src="https://csdnimg.cn/release/blogv2/dist/pc/img/guideRedReward02.png" alt="">
+    <button class="btn-guide-known next">下一步</button>
+  </div>
+  <div class="rr-second-box">
+    <img src="https://csdnimg.cn/release/blogv2/dist/pc/img/guideRedReward03.png" alt="">
+    <button class="btn-guide-known known">知道了</button>
+  </div>
+</div>
+</div>
+
+<div class="redEnvolope" id="redEnvolope">
+  <div class="env-box">
+    <div class="env-container">
+      <div class="pre-open" id="preOpen">
+        <div class="top">
+          <header>
+            <img class="clearTpaErr" :src="redpacketAuthor.avatar" alt="" />
+            <div class="author">成就一亿技术人!</div>
+          </header>
+          <div class="bot-icon"></div>
+        </div>
+        <footer>
+          <div class="red-openbtn open-start"></div>
+          <div class="tip">
+            领取后你会自动成为博主和红包主的粉丝
+            <a class="rule" target="_blank">规则</a>
+          </div>
+        </footer>
+      </div>
+      <div class="opened" id="opened">
+        <div class="bot-icon">
+          <header>
+            <a class="creatorUrl" href="" target="_blank">
+              <img class="clearTpaErr" src="https://profile-avatar.csdnimg.cn/default.jpg!2" alt="" />
+            </a>
+            <div class="author">
+              <div class="tt">hope_wisdom</div> 发出的红包
+            </div>
+          </header>
+        </div>
+        <div class="receive-box">
+          <header></header>
+          <div class="receive-list">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="close-btn"></div>
+  </div>
+</div>
+      
+      <div class="pay-code">
+      <div class="pay-money">实付<span class="pay-money-span" data-nowprice='' data-oldprice=''>元</span></div>
+      <div class="content-blance"><a class="blance-bt" href="javascript:;">使用余额支付</a></div>
+      <div class="content-code">
+        <div id="payCode" data-id="">
+          <div class="renovate">
+            <img src="https://csdnimg.cn/release/blogv2/dist/pc/img/pay-time-out.png">
+            <span>点击重新获取</span>
+          </div>
+        </div>
+        <div class="pay-style"><span><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/weixin.png"></span><span><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/zhifubao.png"></span><span><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/jingdong.png"></span><span class="text">扫码支付</span></div>
+      </div>
+      <div class="bt-close">
+        <svg t="1567152543821" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="10924" xmlns:xlink="http://www.w3.org/1999/xlink" width="12" height="12">
+          <defs>
+            <style type="text/css"></style>
+          </defs>
+          <path d="M512 438.378667L806.506667 143.893333a52.032 52.032 0 1 1 73.6 73.621334L585.621333 512l294.485334 294.485333a52.074667 52.074667 0 0 1-73.6 73.642667L512 585.621333 217.514667 880.128a52.053333 52.053333 0 1 1-73.621334-73.642667L438.378667 512 143.893333 217.514667a52.053333 52.053333 0 1 1 73.621334-73.621334L512 438.378667z" fill="" p-id="10925"></path>
+        </svg>
+      </div>
+      <div class="pay-balance">
+        <input type="radio" class="pay-code-radio" data-type="details">
+        <span class="span">钱包余额</span>
+          <span class="balance" style="color:#FC5531;font-size:14px;">0</span>
+          <div class="pay-code-tile">
+            <img src="https://csdnimg.cn/release/blogv2/dist/pc/img/pay-help.png" alt="">
+            <div class="pay-code-content">
+              <div class="span">
+                <p class="title">抵扣说明：</p>
+                <p> 1.余额是钱包充值的虚拟货币，按照1:1的比例进行支付金额的抵扣。<br> 2.余额无法直接购买下载，可以购买VIP、付费专栏及课程。</p>
+              </div>
+            </div>
+          </div>
+      </div>
+      <a class="pay-balance-con" href="https://i.csdn.net/#/wallet/balance/recharge" target="_blank"><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/recharge.png" alt=""><span>余额充值</span></a>
+    </div>
+    <div style="display:none;">
+      <img src="" onerror='setTimeout(function(){if(!/(csdn.net|iteye.com|baiducontent.com|googleusercontent.com|360webcache.com|sogoucdn.com|bingj.com|baidu.com)$/.test(window.location.hostname)){window.location.href="\x68\x74\x74\x70\x73\x3a\x2f\x2f\x77\x77\x77\x2e\x63\x73\x64\x6e\x2e\x6e\x65\x74"}},3000);'>
+    </div>
+    <div class="keyword-dec-box" id="keywordDecBox"></div>
+  </body>
+    <!-- 富文本柱状图  -->
+    <link rel="stylesheet" href="https://csdnimg.cn/release/blog_editor_html/release1.6.12/ckeditor/plugins/chart/chart.css" />
+    <script type="text/javascript" src="https://csdnimg.cn/release/blog_editor_html/release1.6.12/ckeditor/plugins/chart/lib/chart.min.js"></script>
+    <script type="text/javascript" src="https://csdnimg.cn/release/blog_editor_html/release1.6.12/ckeditor/plugins/chart/widget2chart.js"></script>
+  <script src="https://csdnimg.cn/release/blogv2/dist/components/js/axios-83fa28cedf.min.js" type="text/javascript"></script>
+  <script src="https://csdnimg.cn/release/blogv2/dist/components/js/pc_wap_highlight-8defd55d6e.min.js" type="text/javascript"></script>
+  <script src="https://csdnimg.cn/release/blogv2/dist/components/js/pc_wap_common-3b5f0393dc.min.js" type="text/javascript"></script>
+  <script src="https://csdnimg.cn/release/blogv2/dist/components/js/edit_copy_code-3d1af13f20.min.js" type="text/javascript"></script>
+  <script src="https://g.csdnimg.cn/lib/cboxEditor/1.1.6/embed-editor.min.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="https://g.csdnimg.cn/lib/cboxEditor/1.1.6/embed-editor.min.css">
+  <link rel="stylesheet" href="https://csdnimg.cn/release/blog_editor_html/release1.6.12/ckeditor/plugins/codesnippet/lib/highlight/styles/atom-one-light.css">
+  <script src="https://g.csdnimg.cn/user-accusation/1.0.6/user-accusation.js" type="text/javascript"></script>
+  <script>
+    // 全局声明
+    if (window.csdn === undefined) {
+      window.csdn = {};
+    }
+    var sideToolbarOpt = {}
+
+    $(function() {
+      $(document).on('click', "#toolReportBtnHideNormal,#toolReportBtnHide", function() {
+        window.csdn.loginBox.key({
+          biz: 'blog',
+          subBiz: 'other_service',
+          cb: function() {
+            window.csdn.feedback({
+              "type": 'blog',
+              "rtype": 'article',
+              "rid": articleId,
+              "reportedName": username,
+              "submitOptions": {
+                "title": articleTitle,
+                "contentUrl": articleDetailUrl
+              },
+              "callback": function() {
+                showToast({
+                  text: "感谢您的举报，我们会尽快审核！",
+                  bottom: '10%',
+                  zindex: 9000,
+                  speed: 500,
+                  time: 1500
+                })
+              }
+            })
+          }
+        })
+      });
+    })
+      window.csdn.sideToolbar = {
+        options: {
+          ...sideToolbarOpt,
+          theme: 'white',
+        }
+      }
+  </script>
+    <script src="https://g.csdnimg.cn/baidu-search/1.0.12/baidu-search.js" type="text/javascript"></script>
+  <script src="https://csdnimg.cn/release/download/old_static/js/qrcode.js"></script>
+  <script src="https://g.csdnimg.cn/lib/qrcode/1.0.0/qrcode.min.js"></script>
+  <script src="https://g.csdnimg.cn/user-ordercart/3.0.1/user-ordercart.js" type="text/javascript"></script>
+  <script src="https://g.csdnimg.cn/user-ordertip/5.0.3/user-ordertip.js" type="text/javascript"></script>
+  <script src="https://g.csdnimg.cn/order-payment/4.0.5/order-payment.js" type="text/javascript"></script>
+  <script src="https://csdnimg.cn/release/blogv2/dist/pc/js/common-20500becfb.min.js" type="text/javascript"></script>
+  <script src="https://csdnimg.cn/release/blogv2/dist/pc/js/detail-40fa218c4b.min.js" type="text/javascript"></script>
+  <script src="https://csdnimg.cn/release/blogv2/dist/pc/js/column-fc546048d8.min.js" type="text/javascript"></script>
+    <script src="https://g.csdnimg.cn/side-toolbar/3.6/side-toolbar.js" type="text/javascript"></script>
+  <script src="https://g.csdnimg.cn/copyright/1.0.4/copyright.js" type="text/javascript"></script>
+  <script>
+    $(".MathJax").remove();
+    if ($('div.markdown_views pre.prettyprint code.hljs').length > 0) {
+      $('div.markdown_views')[0].className = 'markdown_views';
+    }
+  </script>
+  <script type="text/javascript" src="https://csdnimg.cn/release/blog_mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      "HTML-CSS": {
+        linebreaks: { automatic: true, width: "94%container" },
+        imageFont: null
+      },
+      tex2jax: {
+      preview: "none",
+      ignoreClass:"title-article"
+      },
+      mml2jax: {
+      preview: 'none'
+      }
+    });
+  </script>
+<script type="text/javascript" crossorigin src="https://g.csdnimg.cn/common/csdn-login-box/csdn-login-box.js"></script></html>
