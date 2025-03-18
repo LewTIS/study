@@ -9,7 +9,7 @@ url = 'https://nba.hupu.com/stats/players/pts'
 resp = requests.get(url)
 
 #2.通过 BeautifulSoup 解析网页，生成 BeautifulSoup 对象
-page = BeautifulSoup(resp.text)
+page = BeautifulSoup(resp.text,"html.parser")
 #3.从 BeautifulSoup 对象中获取表格数据
 #find("标签名"，属性=值) 类似<div class="players_table">  div是标签名 class是属性
 #findall("标签名",属性=值)

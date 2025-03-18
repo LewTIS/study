@@ -22,7 +22,7 @@ obj2 = re.compile(r'<article class="post-item".*?href="(?P<blog_addr>.*?)".*?tar
 result1 = obj1.search(resp.text)
 # print(result1.group('href'))
 
-child_href = domain + result1.group('href').strip("/")
+child_href = domain + result1.group('href').strip("/") 
 
 child_resp = requests.get(child_href,verify=False)
 child_resp.encoding = 'utf-8'
