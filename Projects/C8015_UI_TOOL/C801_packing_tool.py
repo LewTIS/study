@@ -7,7 +7,7 @@ import zipfile
 #create main window
 root = tk.Tk()
 root.title("C801 EVSE USB FW packing tool")
-root.configure(bg="Gainsboro")
+root.configure(bg="#f0f2f5")
 
 # set window size and position
 window_width = 450
@@ -21,53 +21,68 @@ root.geometry(f'{window_width}x{window_height}+{x_offset}+{y_offset}')
 
 title_label = tk.Label(root,text='C801 EVSE USB FW packing tool',
                        font=("Calibri", 14, "bold"),
-                       bg="SteelBlue",
+                       bg="#f0f2f5",
                        fg="black")
 #Place the label in the main window
 title_label.pack(pady=10) 
 
 #add "CBS FW:" label and "CBS FW" combobox
-cbs_fw_frame = tk.Frame(root, bg="Gainsboro")
-cbs_fw_frame.pack(anchor=tk.W, padx=80, pady=20)
+cbs_fw_frame = tk.Frame(root, bg="#f0f2f5")
+cbs_fw_frame.pack(anchor=tk.W, padx=84, pady=20)
 
-cbs_fw_label = tk.Label(cbs_fw_frame, text='CBS FW :', font=("Arial", 13), bg="Gainsboro")
+cbs_fw_label = tk.Label(cbs_fw_frame, text='CBS FW :', font=("Arial", 13), bg="#f0f2f5")
 cbs_fw_label.pack(side=tk.LEFT, anchor=tk.W)
 
 cbs_fw_var = tk.StringVar()
-cbs_fw_combobox = ttk.Combobox(cbs_fw_frame, textvariable=cbs_fw_var, values=["RC8015RMSI_C0030.bmap.gz","option 2","option 3"])
-cbs_fw_combobox.pack(side=tk.LEFT, anchor=tk.W, padx=5)
+cbs_fw_combobox = ttk.Combobox(cbs_fw_frame, 
+                               textvariable=cbs_fw_var, 
+                               values=["RC8015RMSI_C0030.bmap.gz","option 2","option 3"], 
+                               font=('Arial', 12),
+                               width=25)
+cbs_fw_combobox.pack(side=tk.LEFT, anchor=tk.W, padx=6)
 
 #add "HMI FW:" label and "HMI FW" combobox
-hmi_fw_frame = tk.Frame(root, bg="Gainsboro")
+hmi_fw_frame = tk.Frame(root, bg="#f0f2f5")
 hmi_fw_frame.pack(anchor=tk.W, padx=80, pady=10)
 
-hmi_fw_label = tk.Label(hmi_fw_frame, text='HMI FW :', font=("Arial", 13), bg="Gainsboro")
+hmi_fw_label = tk.Label(hmi_fw_frame, text='HMI FW :', font=("Arial", 13), bg="#f0f2f5")
 hmi_fw_label.pack(side=tk.LEFT, anchor=tk.W)
 
 hmi_fw_var = tk.StringVar()
-hmi_fw_combobox = ttk.Combobox(hmi_fw_frame, textvariable=hmi_fw_var, values=["RC8017IMSI_ D0020.bin","option 2","option 3"])
+hmi_fw_combobox = ttk.Combobox(hmi_fw_frame, 
+                               textvariable=hmi_fw_var, 
+                               values=["RC8017IMSI_ D0020.bin","option 2","option 3"], 
+                               font=('Arial', 12),
+                               width=27)
 hmi_fw_combobox.pack(side=tk.LEFT, anchor=tk.W, padx=10)
 
 #add "CB FW:" label and "CB FW" combobox
-cb_fw_frame = tk.Frame(root, bg="Gainsboro")
+cb_fw_frame = tk.Frame(root, bg="#f0f2f5")
 cb_fw_frame.pack(anchor=tk.W, padx=80, pady=20)
 
-cb_fw_label = tk.Label(cb_fw_frame, text='CB FW :', font=("Arial", 13), bg="Gainsboro")
+cb_fw_label = tk.Label(cb_fw_frame, text='CB FW : ', font=("Arial", 13), bg="#f0f2f5")
 cb_fw_label.pack(side=tk.LEFT, anchor=tk.W)
 
 cb_fw_var = tk.StringVar()
-cb_fw_combobox = ttk.Combobox(cb_fw_frame, textvariable=cb_fw_var, values=["RC8011EMSI_E0040.bin","option 2","option 3"])
-cb_fw_combobox.pack(side=tk.LEFT, anchor=tk.W, padx=18)
+cb_fw_combobox = ttk.Combobox(cb_fw_frame, 
+                              textvariable=cb_fw_var, 
+                              values=["RC8011EMSI_E0040.bin","option 2","option 3"], 
+                              font=('Arial', 12),
+                              width=25)
+cb_fw_combobox.pack(side=tk.LEFT, anchor=tk.W, padx=10)
 
 #add "EVSE version" label and "EVSE version" combobox
-evse_version_frame = tk.Frame(root, bg="Gainsboro")
+evse_version_frame = tk.Frame(root, bg="#f0f2f5")
 evse_version_frame.pack(anchor=tk.W, padx=50, pady=5)
 
-evse_version_label = tk.Label(evse_version_frame, text='EVSE VERSION :', font=("Arial", 13), bg="Gainsboro")
+evse_version_label = tk.Label(evse_version_frame, text='EVSE VERSION :', font=("Arial", 13), bg="#f0f2f5")
 evse_version_label.pack(side=tk.LEFT, anchor=tk.W)
 
 evse_version_var = tk.StringVar()
-evse_version_entry = tk.Entry(evse_version_frame,textvariable=evse_version_var)
+evse_version_entry = tk.Entry(evse_version_frame, 
+                              textvariable=evse_version_var, 
+                              font=('Arial', 12),
+                              width=25)
 evse_version_entry.pack(side=tk.LEFT,anchor=tk.W, padx=10)
 
 
