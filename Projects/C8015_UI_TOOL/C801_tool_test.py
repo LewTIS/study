@@ -35,7 +35,6 @@ LABEL_WIDTH = 12
 COMBOBOX_WIDTH = 25
 
 #add "CBS FW:" label and "CBS FW" combobox
-
 cbs_fw_label = tk.Label(main_frame, 
                         text='CBS FW :', 
                         font=("Arial", 13, 'bold'), 
@@ -114,9 +113,9 @@ def generate_config_file():
     if not all([cbs_fw_value,hmi_fw_value,cb_fw_value,evse_version_value]):
         tk.messagebox.showinfo("Warning", "Please fill all fields!")
         return
-    selected_files = [cbs_fw_value, hmi_fw_value, cb_fw_value]
     
-    #check if the file exists 
+    #check if the file exists
+    selected_files = [cbs_fw_value, hmi_fw_value, cb_fw_value]
     for file in selected_files:
         if not os.path.exists(file):
             tk.messagebox.showinfo("Warning", f"{file} does not exist!")
@@ -144,7 +143,7 @@ def generate_config_file():
     config_content += f'CBFW={cb_fw_value}\n'
     config_content += f'CBFW.md5={cb_fw_md5}\n'
     config_content += f'EVSEVER={evse_version_value}\n'
-    
+      
     with open('msiusbp.conf','w') as f:
         f.write(config_content)
     
@@ -157,7 +156,8 @@ def generate_config_file():
                 zipf.write(file,os.path.basename(file)) 
             else:
                 print(f'file {file} not exist!')
-            
+                
+    #notify success message        
     tk.messagebox.showinfo("Success", "Configuration file generated successfully.")
     
 
